@@ -1,0 +1,113 @@
+# Automatic dev deploy for Razzl API (api-dev.razzl.com).
+# Configure the `dev` GitHub Environment from Studio terraform:
+#   cd ../studio/infra/terraform-dev && terraform output github_actions_api_dev
+# ECR repository: razzl-dev/api
+
+name: Deploy API to Dev
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: version
+        run: echo "image_tag=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Normalize deployment config
+        id: deploy-config
+        env:
+          RAW_AWS_REGION: ${{ vars.AWS_REGION }}
+          RAW_ECR_REPOSITORY: ${{ vars.AWS_ECR_REPOSITORY }}
+          RAW_ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+          RAW_ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+          RAW_ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+          RAW_ECS_CONTAINER_NAME: ${{ vars.ECS_CONTAINER_NAME }}
+        run: |
+          sanitize() {
+            printf '%s' "$1" | perl -CS -pe 's/\x{FEFF}//g; s/^\s+|\s+$//g'
+          }
+
+          {
+            echo "aws_region=$(sanitize "$RAW_AWS_REGION")"
+            echo "ecr_repository=$(sanitize "$RAW_ECR_REPOSITORY")"
+            echo "ecs_cluster=$(sanitize "$RAW_ECS_CLUSTER")"
+            echo "ecs_service=$(sanitize "$RAW_ECS_SERVICE")"
+            echo "ecs_task_family=$(sanitize "$RAW_ECS_TASK_FAMILY")"
+            echo "ecs_container_name=$(sanitize "$RAW_ECS_CONTAINER_NAME")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ steps.deploy-config.outputs.aws_region }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ steps.deploy-config.outputs.ecr_repository }}
+          IMAGE_TAG: ${{ steps.version.outputs.image_tag }}
+        run: |
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Render task definition
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ steps.deploy-config.outputs.ecr_repository }}
+          IMAGE_TAG: ${{ steps.version.outputs.image_tag }}
+          TASK_FAMILY: ${{ steps.deploy-config.outputs.ecs_task_family }}
+          CONTAINER_NAME: ${{ steps.deploy-config.outputs.ecs_container_name }}
+        run: |
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition > task-def.json
+          cat task-def.json | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' > task-def-clean.json
+          cat task-def-clean.json | jq \
+            --arg IMAGE "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            --arg NAME "$CONTAINER_NAME" \
+            '.containerDefinitions |= map(
+              if .name == $NAME then
+                .image = $IMAGE |
+                .environment = (
+                  ((.environment // []) | map(select(.name != "RAZZL_DEPLOY_ENV")))
+                  + [{name: "RAZZL_DEPLOY_ENV", value: "dev"}]
+                )
+              else .
+              end
+            )' > task-def-updated.json
+
+      - name: Register task definition
+        id: register-task
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://task-def-updated.json --query taskDefinition.taskDefinitionArn --output text)
+          echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
+
+      - name: Deploy ECS service
+        env:
+          ECS_CLUSTER: ${{ steps.deploy-config.outputs.ecs_cluster }}
+          ECS_SERVICE: ${{ steps.deploy-config.outputs.ecs_service }}
+          TASK_DEF_ARN: ${{ steps.register-task.outputs.task_def_arn }}
+        run: |
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --task-definition "$TASK_DEF_ARN"
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
