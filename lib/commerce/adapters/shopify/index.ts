@@ -3,6 +3,7 @@ import {
   type CommercePlatformAdapter,
   type CtaPlacementInstructions,
   type CtaPlacementInstructionsInput,
+  type ExchangeAuthCodeInput,
   type FetchProductByIdInput,
   type FetchProductsInput,
   type NormalizeWebhookInput,
@@ -10,6 +11,7 @@ import {
   type VerifyWebhookSignatureInput
 } from "@/lib/commerce/adapters/types";
 import { normalizeShopifyWebhook, verifyShopifyWebhookSignature } from "@/lib/commerce/adapters/shopify/webhooks";
+import { exchangeShopifyAuthCode } from "@/lib/commerce/adapters/shopify/oauth";
 
 function notImplemented(method: string): never {
   throw new CommerceAdapterError("NOT_IMPLEMENTED", `${method} is not implemented yet`);
@@ -23,8 +25,11 @@ export const shopifyAdapter: CommercePlatformAdapter = {
     notImplemented("validateConnection");
   },
 
-  async exchangeAuthCode() {
-    notImplemented("exchangeAuthCode");
+  async exchangeAuthCode(input: ExchangeAuthCodeInput) {
+    return exchangeShopifyAuthCode({
+      shopDomain: input.context.storeDomain,
+      authCode: input.authCode
+    });
   },
 
   async fetchProducts(input: FetchProductsInput) {

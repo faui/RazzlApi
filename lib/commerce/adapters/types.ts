@@ -77,6 +77,7 @@ export type AuthResult = {
   scopes: string[];
   externalStoreId: string;
   storeDomain: string;
+  storeDisplayName?: string | null;
   rawPayload?: unknown;
 };
 
