@@ -1,0 +1,84 @@
+{
+  "id": 632910392,
+  "title": "IPod Nano - 8GB",
+  "body_html": "<p>It's the small iPod with a big idea.</p>",
+  "vendor": "Apple",
+  "product_type": "Cult Products",
+  "created_at": "2026-01-15T10:00:00-05:00",
+  "handle": "ipod-nano",
+  "updated_at": "2026-06-20T14:30:00-04:00",
+  "published_at": "2026-01-20T09:00:00-05:00",
+  "template_suffix": null,
+  "published_scope": "web",
+  "tags": "Emotive, Flash Memory, MP3, Music",
+  "status": "active",
+  "admin_graphql_api_id": "gid://shopify/Product/632910392",
+  "options": [
+    { "id": 594680422, "product_id": 632910392, "name": "Color", "position": 1, "values": ["Pink", "Red", "Green"] },
+    { "id": 594680423, "product_id": 632910392, "name": "Capacity", "position": 2, "values": ["8GB", "16GB"] }
+  ],
+  "images": [
+    {
+      "id": 850703190,
+      "product_id": 632910392,
+      "position": 1,
+      "created_at": "2026-01-15T10:00:00-05:00",
+      "updated_at": "2026-01-15T10:00:00-05:00",
+      "alt": null,
+      "width": 123,
+      "height": 456,
+      "src": "https://cdn.shopify.com/s/files/1/0000/0001/products/ipod-nano.png",
+      "variant_ids": [808950810],
+      "admin_graphql_api_id": "gid://shopify/ProductImage/850703190"
+    }
+  ],
+  "image": {
+    "id": 850703190,
+    "product_id": 632910392,
+    "position": 1,
+    "src": "https://cdn.shopify.com/s/files/1/0000/0001/products/ipod-nano.png",
+    "variant_ids": [808950810]
+  },
+  "variants": [
+    {
+      "id": 808950810,
+      "product_id": 632910392,
+      "title": "Pink / 8GB",
+      "price": "199.00",
+      "sku": "IPOD2008PINK",
+      "position": 1,
+      "inventory_policy": "continue",
+      "compare_at_price": null,
+      "fulfillment_service": "manual",
+      "inventory_management": "shopify",
+      "option1": "Pink",
+      "option2": "8GB",
+      "option3": null,
+      "created_at": "2026-01-15T10:00:00-05:00",
+      "updated_at": "2026-06-20T14:30:00-04:00",
+      "taxable": true,
+      "barcode": "1234_pink",
+      "grams": 567,
+      "image_id": 850703190,
+      "weight": 1.25,
+      "weight_unit": "lb",
+      "inventory_item_id": 808950810,
+      "inventory_quantity": 10,
+      "requires_shipping": true,
+      "admin_graphql_api_id": "gid://shopify/ProductVariant/808950810"
+    },
+    {
+      "id": 808950811,
+      "product_id": 632910392,
+      "title": "Red / 16GB",
+      "price": "249.00",
+      "sku": "IPOD2008RED",
+      "position": 2,
+      "option1": "Red",
+      "option2": "16GB",
+      "option3": null,
+      "barcode": "1234_red",
+      "admin_graphql_api_id": "gid://shopify/ProductVariant/808950811"
+    }
+  ]
+}

@@ -7,7 +7,10 @@
     "dev": "next dev -p 8080",
     "build": "next build",
     "start": "next start -p 8080",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test": "vitest run",
+    "test:commerce": "vitest run lib/commerce",
+    "test:commerce:shopify": "vitest run lib/commerce/adapters/shopify"
   },
   "dependencies": {
     "mysql2": "^3.12.0",
@@ -21,6 +24,7 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.22.0",
     "eslint-config-next": "^16.1.6",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
   }
 }
