@@ -6,7 +6,7 @@
 
 ## Current branch
 
-`slice-001-commerce-core-schema` — merge to `origin/main` when validated
+`main` — Slice 1 merged locally; push to `origin/main` when remote is ready
 
 ## Last completed slice
 
@@ -18,7 +18,7 @@
 
 ## Exact next steps
 
-1. Merge `slice-001-commerce-core-schema` → `origin/main`
+1. Push `main` to https://github.com/faui/RazzlApi.git
 2. Configure GitHub Environment `dev` vars from `terraform output github_actions_api_dev` (Studio terraform-dev)
 3. Push initial image to `razzl-dev/api` ECR; set `api_service_enabled = true` in Studio terraform-dev
 4. Start Slice 2: adapter interface + registry + Shopify skeleton
@@ -41,7 +41,7 @@
 - [x] TypeScript types match `DATA-MODEL.md` / applied migration
 - [x] DB pool mirrors Studio `lib/db.ts` env vars
 - [x] `/health` returns 200
-- [ ] `npm run lint` / `npm run build` (run locally after `npm install`)
+- [x] `npm run lint` / `npm run build`
 - [ ] GitHub Environment `dev` configured for deploy workflow
 - [ ] ECS API service enabled in terraform-dev
 
