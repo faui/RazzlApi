@@ -40,4 +40,4 @@ Open **`alaunch2026.code-workspace`** (studio + api + chat) in Cursor for cross-
 
 ## Status
 
-Slice 1 complete — commerce types + DB skeleton. See `CONTINUE-HERE.md`.
+Slice 1 complete — commerce types + DB skeleton. CI/CD: see [`.github/DEPLOYMENT.md`](.github/DEPLOYMENT.md) for GitHub Environment setup.

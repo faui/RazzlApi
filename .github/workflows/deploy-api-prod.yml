@@ -1,15 +1,18 @@
-# Automatic dev deploy for Razzl API (api-dev.razzl.com).
-# GitHub Environment setup: .github/DEPLOYMENT.md
+# Manual production deploy for Razzl API (api.razzl.com).
+# Configure the `prod` GitHub Environment — see .github/DEPLOYMENT.md
 
-name: Deploy API to Dev
+name: Deploy API to Production
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      git_ref:
+        description: "Branch, tag, or SHA to deploy"
+        required: true
+        default: "main"
 
 concurrency:
-  group: deploy-api-dev-${{ github.ref }}
+  group: deploy-api-prod
   cancel-in-progress: true
 
 permissions:
@@ -17,12 +20,14 @@ permissions:
 
 jobs:
   deploy:
-    environment: dev
+    environment: prod
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
 
       - name: Resolve image tag
         id: version
@@ -89,7 +94,7 @@ jobs:
                 .image = $IMAGE |
                 .environment = (
                   ((.environment // []) | map(select(.name != "RAZZL_DEPLOY_ENV")))
-                  + [{name: "RAZZL_DEPLOY_ENV", value: "dev"}]
+                  + [{name: "RAZZL_DEPLOY_ENV", value: "prod"}]
                 )
               else .
               end

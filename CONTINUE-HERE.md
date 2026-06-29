@@ -18,8 +18,8 @@
 
 ## Exact next steps
 
-1. Push `main` to https://github.com/faui/RazzlApi.git
-2. Configure GitHub Environment `dev` vars from `terraform output github_actions_api_dev` (Studio terraform-dev)
+1. Configure GitHub Environments — see `.github/DEPLOYMENT.md` (copy AWS secrets from Studio/Chat)
+2. Create `prod` environment; set variables for `dev` and `prod`
 3. Push initial image to `razzl-dev/api` ECR; set `api_service_enabled = true` in Studio terraform-dev
 4. Start Slice 2: adapter interface + registry + Shopify skeleton
 
@@ -31,7 +31,9 @@
 | `lib/commerce/types/` | Row types for all 8 `commerce_*` tables |
 | `lib/commerce/core/db/` | mysql2 pool + query helpers |
 | `.github/workflows/ci.yml` | Lint + build on PR/main |
-| `.github/workflows/deploy-api-dev.yml` | ECR build → ECS deploy dev |
+| `.github/workflows/deploy-api-dev.yml` | ECR build → ECS deploy dev (push to `main`) |
+| `.github/workflows/deploy-api-prod.yml` | ECR build → ECS deploy prod (manual) |
+| `.github/DEPLOYMENT.md` | GitHub Environment `dev` / `prod` variables and secrets |
 | `Dockerfile` | Port 8080 production image |
 | `db/README.md` | Pointer to Studio migrations |
 | `infra/terraform/README.md` | Pointer to Studio shared infra |
