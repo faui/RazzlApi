@@ -102,13 +102,93 @@ export type ConnectionStatusSummary = {
   storeDisplayName: string | null;
   installStatus: CommerceInstallStatus;
   tenantLinked: boolean;
+  tenantPk: number | null;
+  tenantName: string | null;
+  connectedAt: string | null;
   installedAt: string | null;
 };
+
+export async function linkConnectionToTenant(
+  connectionId: number,
+  tenantPk: number
+): Promise<void> {
+  const existing = await findConnectionById(connectionId);
+  if (!existing) {
+    throw new Error("CONNECTION_NOT_FOUND");
+  }
+  if (existing.tenant_fk !== null && existing.tenant_fk !== tenantPk) {
+    throw new Error("CONNECTION_ALREADY_LINKED");
+  }
+  if (existing.tenant_fk === tenantPk) {
+    return;
+  }
+
+  await commerceQuery(
+    `UPDATE ${COMMERCE_TABLES.platformConnection}
+     SET tenant_fk = ?,
+         install_status = 'connected',
+         connected_at = COALESCE(connected_at, NOW()),
+         updated_on = NOW()
+     WHERE commerce_platform_connection_pk = ?`,
+    [tenantPk, connectionId]
+  );
+}
+
+export async function unlinkConnectionTenant(connectionId: number): Promise<void> {
+  await commerceQuery(
+    `UPDATE ${COMMERCE_TABLES.platformConnection}
+     SET tenant_fk = NULL,
+         install_status = 'installed',
+         connected_at = NULL,
+         updated_on = NOW()
+     WHERE commerce_platform_connection_pk = ?`,
+    [connectionId]
+  );
+}
+
+export async function findConnectionById(
+  connectionId: number
+): Promise<CommercePlatformConnectionRow | null> {
+  const rows = await commerceQuery<CommercePlatformConnectionRow[]>(
+    `SELECT * FROM ${COMMERCE_TABLES.platformConnection}
+     WHERE commerce_platform_connection_pk = ?
+     LIMIT 1`,
+    [connectionId]
+  );
+  return rows[0] ?? null;
+}
 
 export async function getConnectionStatusByStoreDomain(
   storeDomain: string
 ): Promise<ConnectionStatusSummary | null> {
-  const row = await findConnectionByStoreDomain(storeDomain);
+  const rows = await commerceQuery<
+    Array<{
+      commerce_platform_connection_pk: number;
+      store_domain: string | null;
+      store_display_name: string | null;
+      install_status: CommerceInstallStatus;
+      tenant_fk: number | null;
+      tenant_name: string | null;
+      connected_at: string | Date | null;
+      installed_at: string | Date | null;
+    }>
+  >(
+    `SELECT c.commerce_platform_connection_pk,
+            c.store_domain,
+            c.store_display_name,
+            c.install_status,
+            c.tenant_fk,
+            t.tenant_name,
+            c.connected_at,
+            c.installed_at
+     FROM ${COMMERCE_TABLES.platformConnection} c
+     LEFT JOIN tenant t ON t.tenant_pk = c.tenant_fk
+     WHERE c.platform_type = 'shopify' AND c.store_domain = ?
+     LIMIT 1`,
+    [storeDomain]
+  );
+
+  const row = rows[0];
   if (!row) {
     return null;
   }
@@ -119,6 +199,9 @@ export async function getConnectionStatusByStoreDomain(
     storeDisplayName: row.store_display_name,
     installStatus: row.install_status,
     tenantLinked: row.tenant_fk !== null,
+    tenantPk: row.tenant_fk,
+    tenantName: row.tenant_name,
+    connectedAt: row.connected_at ? String(row.connected_at) : null,
     installedAt: row.installed_at ? String(row.installed_at) : null
   };
 }

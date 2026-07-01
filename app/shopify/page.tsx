@@ -1,9 +1,16 @@
 import { getConnectionStatusByStoreDomain } from "@/lib/commerce/core/connections/platform-connection-repo";
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
+import { ShopifyOnboardingPanel } from "@/app/shopify/shopify-onboarding-panel";
 
 type PageProps = {
   searchParams: Promise<{ shop?: string }>;
 };
+
+function getApiPublicOrigin(): string {
+  return (
+    process.env.RAZZL_PUBLIC_ORIGIN?.trim()?.replace(/\/$/, "") ?? "http://localhost:8080"
+  );
+}
 
 export default async function ShopifyEmbeddedHome({ searchParams }: PageProps) {
   const { shop: shopParam } = await searchParams;
@@ -32,7 +39,10 @@ export default async function ShopifyEmbeddedHome({ searchParams }: PageProps) {
                 </p>
               ) : null}
               <p>
-                <strong>Razzl account linked:</strong> {status.tenantLinked ? "Yes" : "No — coming in next step"}
+                <strong>Razzl account:</strong>{" "}
+                {status.tenantLinked
+                  ? status.tenantName ?? `Tenant #${status.tenantPk}`
+                  : "Not linked"}
               </p>
             </>
           ) : (
@@ -43,14 +53,14 @@ export default async function ShopifyEmbeddedHome({ searchParams }: PageProps) {
         <p>Open this app from your Shopify admin to view connection status.</p>
       )}
 
-      <section style={{ marginTop: "2rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Next steps</h2>
-        <ol>
-          <li>Link your Razzl Studio account (Slice 4)</li>
-          <li>Sync products from Shopify</li>
-          <li>Map products to copilots and enable storefront CTA</li>
-        </ol>
-      </section>
+      {shopDomain && status ? (
+        <ShopifyOnboardingPanel
+          shop={shopDomain}
+          tenantLinked={status.tenantLinked}
+          tenantName={status.tenantName}
+          apiPublicOrigin={getApiPublicOrigin()}
+        />
+      ) : null}
     </main>
   );
 }
