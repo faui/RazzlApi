@@ -2,56 +2,50 @@
 
 ## Current status
 
-**Slice 4 implemented** — tenant linking (HMAC link tokens, Studio deep links, connection status UI). Ready for dev validation and merge.
+**Slices 5–6 implemented** on branch `slice-005-006-product-sync-mapping` (product import + mapping UI/API). **Slice 4** on `slice-004-tenant-connection` — merge both to `main` and redeploy api-dev.
 
 ## Current branch
 
-`slice-004-tenant-connection` — merge to `origin/main` after E2E link test
+`slice-005-006-product-sync-mapping` (includes Slice 4 base)
 
 ## Last completed slice
 
-**Slice 3** — Shopify OAuth install flow (2026-06-29, merged + deployed to dev)
+**Slice 4** — tenant linking (local + remote branch; **not yet on api-dev** as of 2026-07-01)
 
 ## Next slice
 
-**Slice 5** — Shopify product import into `commerce_*` tables
+**Slice 7** — Studio deep links, launch URL builders, mapping snapshot refresh
 
 ## Exact next steps
 
-1. Add env vars locally (or run `studio/infra/terraform-dev/scripts/create-dev-shopify-secrets.ps1`):
-   - `RAZZL_STUDIO_PUBLIC_ORIGIN=https://studio-dev.razzl.com`
-   - `COMMERCE_STUDIO_LINK_SECRET` (same value in Studio `.env.local`)
-2. Re-upload Shopify secret with `studio_link_secret` key → `terraform apply` in terraform-dev
-3. Merge + deploy **RazzlApi** and **Studio** Slice 4 branches
-4. E2E: Shopify admin → **Connect existing Razzl account** → Studio login → confirm link → tenant name on `/shopify`
-5. Start Slice 5: product import
+1. Merge `slice-004-tenant-connection` → `main`, deploy api-dev, validate tenant link E2E
+2. Merge `slice-005-006-product-sync-mapping` → `main`, deploy api-dev
+3. E2E: Sync products → map to copilot → toggle CTA
+4. Start Slice 7 per IMPLEMENTATION-PLAN.md
 
-## Files added (Slice 4)
+## Files added (Slices 5–6)
 
 | Path | Purpose |
 |------|---------|
-| `lib/commerce/core/connections/link-token.ts` | HMAC-signed link tokens |
-| `lib/commerce/core/connections/connection-service.ts` | start/complete/unlink tenant link |
-| `lib/commerce/config/studio-env.ts` | Studio origin + internal secret verify |
-| `lib/commerce/core/studio-links.ts` | Login/signup deep link builders |
-| `app/api/commerce/connection/link/start/route.ts` | Start link → Studio URLs |
-| `app/api/commerce/connection/link/route.ts` | POST link / DELETE unlink (internal key) |
-| `app/shopify/shopify-onboarding-panel.tsx` | Connect account UI + checklist |
+| `lib/commerce/adapters/shopify/products.ts` | Shopify REST product fetch |
+| `lib/commerce/core/sync/sync-service.ts` | Idempotent catalog sync |
+| `lib/commerce/core/products/external-product-repo.ts` | External product/variant upsert |
+| `lib/commerce/core/mapping/mapping-service.ts` | Map/unmap/CTA + Studio product picker |
+| `app/api/commerce/sync/route.ts` | POST sync / GET status |
+| `app/api/commerce/products/route.ts` | Product + mapping board |
+| `app/api/commerce/mappings/route.ts` | Map, unmap, CTA toggle |
+| `app/shopify/shopify-products-panel.tsx` | Sync + mapping table UI |
 
 ## Validation status
 
-- [x] Link token unit tests
+- [x] Product fetch + sync unit tests
 - [x] `npm run lint` / `npm run test` / `npm run build`
-- [ ] Live tenant link on dev store
-- [ ] Slice 4 merged to `origin/main`
-
-## Do-not-change warnings
-
-- Schema migrations stay in **Studio** repo only
-- No product sync until Slice 5
+- [ ] Slice 4 merged + deployed to api-dev
+- [ ] Live product sync on dev store
+- [ ] Mapping + CTA toggle on dev store
 
 ## Recommended next Composer prompt
 
 ```text
-Implement Slice 5 per IMPLEMENTATION-PLAN.md: Shopify product import into commerce_product tables. Webhook + manual sync trigger. Update CONTINUE-HERE.md.
+Implement Slice 7: Studio deep link and launch URL builders. Refresh mapping snapshots from product status. Update CONTINUE-HERE.md.
 ```

@@ -45,7 +45,7 @@ export function ShopifyOnboardingPanel({
             Linked to Razzl account: <strong>{tenantName ?? "Connected"}</strong>
           </p>
           <p style={{ color: "#555" }}>
-            Product sync and mapping arrive in the next slices. Open Razzl Studio to manage copilots.
+            Sync Shopify products and map them to Razzl copilots below.
           </p>
         </>
       ) : (
@@ -88,8 +88,10 @@ export function ShopifyOnboardingPanel({
         <li style={{ fontWeight: tenantLinked ? 400 : 600 }}>
           {tenantLinked ? "✓" : "○"} Link your Razzl Studio account
         </li>
-        <li>Sync products from Shopify (Slice 5)</li>
-        <li>Map products to copilots and enable storefront CTA (Slices 6–8)</li>
+        <li style={{ fontWeight: tenantLinked ? 400 : 600 }}>
+          {tenantLinked ? "✓" : "○"} Sync products from Shopify
+        </li>
+        <li>Map products to copilots and enable storefront CTA</li>
       </ol>
     </section>
   );
