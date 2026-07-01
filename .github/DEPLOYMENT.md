@@ -54,6 +54,8 @@ Set these as **Environment variables** (not repository variables):
 
 RazzlApi has **no** Stripe or ChatKit variables — only AWS deploy credentials and ECS/ECR names.
 
+Shopify OAuth and token encryption for the API container are **not** in GitHub Actions — they are injected via ECS task definition from AWS Secrets Manager (`dev/shopify/razzl_api` or `prod/shopify/razzl_api`). See `studio/docs/commerce/SHOPIFY-DEPLOYMENT.md`.
+
 ## Quick setup with GitHub CLI
 
 Create `prod` environment and set **dev** variables (secrets must be copied from Studio/Chat UI):
