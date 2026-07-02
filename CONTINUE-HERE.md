@@ -2,15 +2,15 @@
 
 ## Current status
 
-**Slices 5–6 implemented** on branch `slice-005-006-product-sync-mapping` (product import + mapping UI/API). **Slice 4** on `slice-004-tenant-connection` — merge both to `main` and redeploy api-dev.
+**Slices 5–6 implemented** on branch `slice-005-006-product-sync-mapping`. Slice 4 tenant linking verified on dev store `razzl-dev.myshopify.com`.
 
 ## Current branch
 
-`slice-005-006-product-sync-mapping` (includes Slice 4 base)
+`slice-005-006-product-sync-mapping` — merge to `main` and deploy api-dev
 
 ## Last completed slice
 
-**Slice 4** — tenant linking (local + remote branch; **not yet on api-dev** as of 2026-07-01)
+**Slice 4** — tenant linking (verified on dev)
 
 ## Next slice
 
@@ -18,10 +18,9 @@
 
 ## Exact next steps
 
-1. Merge `slice-004-tenant-connection` → `main`, deploy api-dev, validate tenant link E2E
-2. Merge `slice-005-006-product-sync-mapping` → `main`, deploy api-dev
-3. E2E: Sync products → map to copilot → toggle CTA
-4. Start Slice 7 per IMPLEMENTATION-PLAN.md
+1. Merge `slice-005-006-product-sync-mapping` → `main`, push, deploy api-dev
+2. In Shopify app: **Sync now** → map products → toggle CTA for published copilots
+3. Start Slice 7 (storefront CTA resolver is Slice 8)
 
 ## Files added (Slices 5–6)
 
@@ -29,7 +28,6 @@
 |------|---------|
 | `lib/commerce/adapters/shopify/products.ts` | Shopify REST product fetch |
 | `lib/commerce/core/sync/sync-service.ts` | Idempotent catalog sync |
-| `lib/commerce/core/products/external-product-repo.ts` | External product/variant upsert |
 | `lib/commerce/core/mapping/mapping-service.ts` | Map/unmap/CTA + Studio product picker |
 | `app/api/commerce/sync/route.ts` | POST sync / GET status |
 | `app/api/commerce/products/route.ts` | Product + mapping board |
@@ -38,11 +36,10 @@
 
 ## Validation status
 
-- [x] Product fetch + sync unit tests
-- [x] `npm run lint` / `npm run test` / `npm run build`
-- [ ] Slice 4 merged + deployed to api-dev
-- [ ] Live product sync on dev store
-- [ ] Mapping + CTA toggle on dev store
+- [x] Unit tests (25+), lint, build pass locally
+- [x] Slice 4 E2E on razzl-dev store
+- [ ] Slice 5–6 deployed to api-dev
+- [ ] Live sync + mapping on dev store
 
 ## Recommended next Composer prompt
 

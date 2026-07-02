@@ -13,13 +13,15 @@ type Props = {
   tenantLinked: boolean;
   tenantName: string | null;
   apiPublicOrigin: string;
+  productCount?: number;
 };
 
 export function ShopifyOnboardingPanel({
   shop,
   tenantLinked,
   tenantName,
-  apiPublicOrigin
+  apiPublicOrigin,
+  productCount = 0
 }: Props) {
   async function openStudioLink(mode: "login" | "signup") {
     const startUrl = `${apiPublicOrigin}/api/commerce/connection/link/start?shop=${encodeURIComponent(shop)}`;
@@ -88,8 +90,8 @@ export function ShopifyOnboardingPanel({
         <li style={{ fontWeight: tenantLinked ? 400 : 600 }}>
           {tenantLinked ? "✓" : "○"} Link your Razzl Studio account
         </li>
-        <li style={{ fontWeight: tenantLinked ? 400 : 600 }}>
-          {tenantLinked ? "✓" : "○"} Sync products from Shopify
+        <li style={{ fontWeight: tenantLinked && productCount > 0 ? 400 : tenantLinked ? 600 : 400 }}>
+          {tenantLinked && productCount > 0 ? "✓" : "○"} Sync products from Shopify
         </li>
         <li>Map products to copilots and enable storefront CTA</li>
       </ol>

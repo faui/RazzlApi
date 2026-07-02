@@ -16,7 +16,7 @@ describe("getAdapter", () => {
 });
 
 describe("shopifyAdapter skeleton", () => {
-  it("throws NOT_IMPLEMENTED for API-backed methods", async () => {
+  it("throws NOT_IMPLEMENTED for validateConnection", async () => {
     const context = {
       connectionId: 1,
       tenantId: null,
@@ -29,10 +29,6 @@ describe("shopifyAdapter skeleton", () => {
     await expect(shopifyAdapter.validateConnection({ context })).rejects.toMatchObject({
       code: "NOT_IMPLEMENTED"
     } satisfies Partial<CommerceAdapterError>);
-
-    await expect(
-      shopifyAdapter.fetchProducts({ context })
-    ).rejects.toBeInstanceOf(CommerceAdapterError);
   });
 
   it("returns theme app block CTA instructions", async () => {

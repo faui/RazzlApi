@@ -1,6 +1,6 @@
 import { getConnectionStatusByStoreDomain } from "@/lib/commerce/core/connections/platform-connection-repo";
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
-import { ShopifyOnboardingPanel } from "@/app/shopify/shopify-onboarding-panel";
+import { ShopifyCommercePanels } from "@/app/shopify/shopify-commerce-panels";
 
 type PageProps = {
   searchParams: Promise<{ shop?: string }>;
@@ -54,7 +54,7 @@ export default async function ShopifyEmbeddedHome({ searchParams }: PageProps) {
       )}
 
       {shopDomain && status ? (
-        <ShopifyOnboardingPanel
+        <ShopifyCommercePanels
           shop={shopDomain}
           tenantLinked={status.tenantLinked}
           tenantName={status.tenantName}

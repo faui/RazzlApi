@@ -12,6 +12,10 @@ import {
 } from "@/lib/commerce/adapters/types";
 import { normalizeShopifyWebhook, verifyShopifyWebhookSignature } from "@/lib/commerce/adapters/shopify/webhooks";
 import { exchangeShopifyAuthCode } from "@/lib/commerce/adapters/shopify/oauth";
+import {
+  fetchShopifyProductById,
+  fetchShopifyProductsPage
+} from "@/lib/commerce/adapters/shopify/products";
 
 function notImplemented(method: string): never {
   throw new CommerceAdapterError("NOT_IMPLEMENTED", `${method} is not implemented yet`);
@@ -33,13 +37,14 @@ export const shopifyAdapter: CommercePlatformAdapter = {
   },
 
   async fetchProducts(input: FetchProductsInput) {
-    void input.context.connectionId;
-    notImplemented("fetchProducts");
+    return fetchShopifyProductsPage(input.context, {
+      pageCursor: input.pageCursor,
+      pageSize: input.pageSize
+    });
   },
 
   async fetchProductById(input: FetchProductByIdInput) {
-    void input.externalProductId;
-    notImplemented("fetchProductById");
+    return fetchShopifyProductById(input.context, input.externalProductId);
   },
 
   async registerWebhooks() {
