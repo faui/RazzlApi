@@ -96,6 +96,7 @@ export function ShopifyProductsPanel({
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [mappingFor, setMappingFor] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     setMessage(null);
@@ -175,6 +176,31 @@ export function ShopifyProductsPanel({
       cancelled = true;
     };
   }, [apiPublicOrigin, onProductCountChange, shop, tenantLinked]);
+
+  async function handleRefreshSnapshots(externalProductId?: string) {
+    setRefreshing(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiPublicOrigin}/api/commerce/mappings/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          externalProductId ? { shop, externalProductId } : { shop }
+        )
+      });
+      const data = (await response.json()) as { ok: boolean; refreshed?: number; error?: string };
+      if (!response.ok || !data.ok) {
+        setMessage(data.error ?? "Refresh failed");
+        return;
+      }
+      setMessage(`Refreshed ${data.refreshed ?? 0} Copilot snapshot(s)`);
+      await loadData();
+    } catch {
+      setMessage("Refresh failed");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function handleSync() {
     setSyncing(true);
@@ -263,21 +289,38 @@ export function ShopifyProductsPanel({
               : ""}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void handleSync()}
-          disabled={syncing}
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#008060",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            cursor: syncing ? "wait" : "pointer"
-          }}
-        >
-          {syncing ? "Syncing…" : "Sync now"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => void handleRefreshSnapshots()}
+            disabled={refreshing || loading}
+            style={{
+              padding: "0.5rem 1rem",
+              background: "#fff",
+              color: "#008060",
+              border: "1px solid #008060",
+              borderRadius: "6px",
+              cursor: refreshing ? "wait" : "pointer"
+            }}
+          >
+            {refreshing ? "Refreshing…" : "Refresh Copilot status"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSync()}
+            disabled={syncing}
+            style={{
+              padding: "0.5rem 1rem",
+              background: "#008060",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              cursor: syncing ? "wait" : "pointer"
+            }}
+          >
+            {syncing ? "Syncing…" : "Sync now"}
+          </button>
+        </div>
       </div>
 
       {message ? <p style={{ color: "#444", marginTop: "1rem" }}>{message}</p> : null}
@@ -370,6 +413,15 @@ export function ShopifyProductsPanel({
                       <button type="button" onClick={() => setMappingFor(product.externalProductId)}>
                         {product.productPk ? "Change Copilot mapping" : "Map Copilot"}
                       </button>
+                      {product.productPk ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleRefreshSnapshots(product.externalProductId)}
+                          disabled={refreshing}
+                        >
+                          Refresh status
+                        </button>
+                      ) : null}
                       {product.productPk ? (
                         <button type="button" onClick={() => void handleUnmap(product.externalProductId)}>
                           Unmap Copilot

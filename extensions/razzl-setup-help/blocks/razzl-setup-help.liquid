@@ -1,0 +1,29 @@
+{% if product %}
+  <div
+    class="razzl-setup-help-root"
+    data-razzl-setup-help
+    data-shop="{{ shop.permanent_domain }}"
+    data-product-id="{{ product.id }}"
+    data-api-base="{{ block.settings.api_base_url }}"
+    {{ block.shopify_attributes }}
+  ></div>
+  <script src="{{ 'razzl-setup-help.js' | asset_url }}" defer></script>
+  {{ 'razzl-setup-help.css' | asset_url | stylesheet_tag }}
+{% endif %}
+
+{% schema %}
+{
+  "name": "Razzl Setup Help",
+  "target": "section",
+  "templates": ["product"],
+  "settings": [
+    {
+      "type": "text",
+      "id": "api_base_url",
+      "label": "Razzl API base URL",
+      "default": "https://api.razzl.com",
+      "info": "Leave default unless directed by Razzl support."
+    }
+  ]
+}
+{% endschema %}

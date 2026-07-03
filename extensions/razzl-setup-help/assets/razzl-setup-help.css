@@ -1,0 +1,28 @@
+.razzl-setup-help-root {
+  margin: 1rem 0;
+}
+
+.razzl-setup-help-root a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+}
+
+.razzl-setup-help__link {
+  text-decoration: underline;
+}
+
+.razzl-setup-help__badge {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+}
+
+.razzl-setup-help__powered {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}

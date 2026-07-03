@@ -2,47 +2,52 @@
 
 ## Current status
 
-**Slices 5–6 implemented** on branch `slice-005-006-product-sync-mapping`. Slice 4 tenant linking verified on dev store `razzl-dev.myshopify.com`.
+**Slices 7–8 implemented** on current branch. Slice 4 tenant linking verified on dev store `razzl-dev.myshopify.com`.
 
 ## Current branch
 
-`slice-005-006-product-sync-mapping` — merge to `main` and deploy api-dev
+Merge to `main` and deploy api-dev when validated.
 
-## Last completed slice
+## Last completed slices
 
-**Slice 4** — tenant linking (verified on dev)
+**Slice 7** — mapping snapshot refresh from live Studio product rows  
+**Slice 8** — storefront CTA resolver API, merchant CTA settings UI, theme app extension
 
 ## Next slice
 
-**Slice 7** — Studio deep links, launch URL builders, mapping snapshot refresh
+**Slice 9** — launch tracking (`commerce_launch_event`, click tracking in theme block)
 
 ## Exact next steps
 
-1. Merge `slice-005-006-product-sync-mapping` → `main`, push, deploy api-dev
-2. In Shopify app: **Sync now** → map products → toggle CTA for published copilots
-3. Start Slice 7 (storefront CTA resolver is Slice 8)
+1. Deploy api-dev with Slices 7–8
+2. **Shopify CLI:** deploy theme extension (`shopify app deploy` or `shopify app dev` with extensions)
+3. In Shopify admin app: Sync → Map Copilot → publish copilot in Studio → toggle CTA On → **Refresh Copilot status**
+4. Theme editor: add **Razzl Setup Help** block to product template
+5. Verify storefront product page shows CTA → Launch opens ChatKit with `launchsource=shopify`
 
-## Files added (Slices 5–6)
+## Files added (Slices 7–8)
 
 | Path | Purpose |
 |------|---------|
-| `lib/commerce/adapters/shopify/products.ts` | Shopify REST product fetch |
-| `lib/commerce/core/sync/sync-service.ts` | Idempotent catalog sync |
-| `lib/commerce/core/mapping/mapping-service.ts` | Map/unmap/CTA + Studio product picker |
-| `app/api/commerce/sync/route.ts` | POST sync / GET status |
-| `app/api/commerce/products/route.ts` | Product + mapping board |
-| `app/api/commerce/mappings/route.ts` | Map, unmap, CTA toggle |
-| `app/shopify/shopify-products-panel.tsx` | Sync + mapping table UI |
+| `lib/commerce/core/mapping/status-sync.ts` | Refresh mapping snapshots from `product` rows |
+| `app/api/commerce/mappings/refresh/route.ts` | POST refresh endpoint |
+| `lib/commerce/core/cta/cta-config-repo.ts` | Storefront CTA config CRUD |
+| `lib/commerce/core/cta/cta-resolver-service.ts` | Fail-closed public CTA resolver |
+| `app/api/commerce/cta/resolve/route.ts` | Public GET + CORS |
+| `app/api/commerce/cta/config/route.ts` | Merchant GET/PATCH CTA settings |
+| `app/shopify/shopify-cta-settings-panel.tsx` | CTA settings + theme instructions |
+| `extensions/razzl-setup-help/` | Theme app extension (product block) |
 
 ## Validation status
 
-- [x] Unit tests (25+), lint, build pass locally
+- [x] Unit tests (38 commerce tests), lint, build pass locally
 - [x] Slice 4 E2E on razzl-dev store
-- [ ] Slice 5–6 deployed to api-dev
-- [ ] Live sync + mapping on dev store
+- [ ] Slices 7–8 deployed to api-dev
+- [ ] Theme extension deployed to dev store
+- [ ] Live storefront CTA on dev store
 
 ## Recommended next Composer prompt
 
 ```text
-Implement Slice 7: Studio deep link and launch URL builders. Refresh mapping snapshots from product status. Update CONTINUE-HERE.md.
+Implement Slice 9: Launch tracking — commerce_launch_event table migration (Studio db/), track CTA click before redirect in theme block, lightweight analytics UI in Shopify admin. Update CONTINUE-HERE.md.
 ```
