@@ -52,6 +52,14 @@ export type CommerceSyncRunStatus = "running" | "succeeded" | "failed" | "partia
 
 export type CommerceEventProcessingStatus = "pending" | "processed" | "ignored" | "failed";
 
+export type CommerceLaunchSource =
+  | "shopify_product_page_cta"
+  | "qr"
+  | "manual_pdf"
+  | "support_page";
+
+export const COMMERCE_LAUNCH_SOURCE_SHOPIFY_PRODUCT_PAGE_CTA = "shopify_product_page_cta" as const;
+
 /** MySQL timestamp columns as returned by mysql2. */
 export type CommerceTimestamp = Date | string;
 
@@ -66,7 +74,8 @@ export const COMMERCE_TABLES = {
   storefrontCtaConfig: "commerce_storefront_cta_config",
   platformSyncRun: "commerce_platform_sync_run",
   platformEvent: "commerce_platform_event",
-  billingAccount: "commerce_billing_account"
+  billingAccount: "commerce_billing_account",
+  launchEvent: "commerce_launch_event"
 } as const;
 
 export type CommerceTableName = (typeof COMMERCE_TABLES)[keyof typeof COMMERCE_TABLES];

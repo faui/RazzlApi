@@ -2,6 +2,7 @@
 
 import { ShopifyOnboardingPanel } from "@/app/shopify/shopify-onboarding-panel";
 import { ShopifyCtaSettingsPanel } from "@/app/shopify/shopify-cta-settings-panel";
+import { ShopifyLaunchAnalyticsPanel } from "@/app/shopify/shopify-launch-analytics-panel";
 import { ShopifyProductsPanel } from "@/app/shopify/shopify-products-panel";
 import { useState } from "react";
 
@@ -36,6 +37,7 @@ export function ShopifyCommercePanels({
         onProductCountChange={setProductCount}
       />
       <ShopifyCtaSettingsPanel shop={shop} apiPublicOrigin={apiPublicOrigin} tenantLinked={tenantLinked} />
+      <ShopifyLaunchAnalyticsPanel shop={shop} apiPublicOrigin={apiPublicOrigin} tenantLinked={tenantLinked} />
     </>
   );
 }

@@ -2,52 +2,49 @@
 
 ## Current status
 
-**Slices 7–8 implemented** on current branch. Slice 4 tenant linking verified on dev store `razzl-dev.myshopify.com`.
+**Slice 9 implemented** — launch tracking for storefront CTA clicks.
 
 ## Current branch
 
-Merge to `main` and deploy api-dev when validated.
+Merge to `main` and deploy api-dev when validated. Apply Studio migration `20260702_commerce_launch_event.sql` to shared RDS first.
 
-## Last completed slices
+## Last completed slice
 
-**Slice 7** — mapping snapshot refresh from live Studio product rows  
-**Slice 8** — storefront CTA resolver API, merchant CTA settings UI, theme app extension
+**Slice 9** — `commerce_launch_event` table, CTA click tracking in theme block, Shopify admin analytics summary
 
 ## Next slice
 
-**Slice 9** — launch tracking (`commerce_launch_event`, click tracking in theme block)
+**Slice 10** — Shopify Billing / App Pricing
 
 ## Exact next steps
 
-1. Deploy api-dev with Slices 7–8
-2. **Shopify CLI:** deploy theme extension (`shopify app deploy` or `shopify app dev` with extensions)
-3. In Shopify admin app: Sync → Map Copilot → publish copilot in Studio → toggle CTA On → **Refresh Copilot status**
-4. Theme editor: add **Razzl Setup Help** block to product template
-5. Verify storefront product page shows CTA → Launch opens ChatKit with `launchsource=shopify`
+1. Apply `studio/db/migrations/20260702_commerce_launch_event.sql` on dev RDS
+2. Deploy api-dev with Slice 9
+3. Redeploy theme extension (`shopify app deploy`) so click tracking JS ships
+4. Validate: storefront CTA click → row in `commerce_launch_event` → analytics panel updates
 
-## Files added (Slices 7–8)
+## Files added (Slice 9)
 
 | Path | Purpose |
 |------|---------|
-| `lib/commerce/core/mapping/status-sync.ts` | Refresh mapping snapshots from `product` rows |
-| `app/api/commerce/mappings/refresh/route.ts` | POST refresh endpoint |
-| `lib/commerce/core/cta/cta-config-repo.ts` | Storefront CTA config CRUD |
-| `lib/commerce/core/cta/cta-resolver-service.ts` | Fail-closed public CTA resolver |
-| `app/api/commerce/cta/resolve/route.ts` | Public GET + CORS |
-| `app/api/commerce/cta/config/route.ts` | Merchant GET/PATCH CTA settings |
-| `app/shopify/shopify-cta-settings-panel.tsx` | CTA settings + theme instructions |
-| `extensions/razzl-setup-help/` | Theme app extension (product block) |
+| `studio/db/migrations/20260702_commerce_launch_event.sql` | Launch event table (Studio schema owner) |
+| `lib/commerce/core/analytics/launch-event-repo.ts` | Insert + aggregation queries |
+| `lib/commerce/core/analytics/launch-tracking-service.ts` | Record click + analytics summary |
+| `app/api/commerce/launch-events/route.ts` | Public POST + CORS (theme block) |
+| `app/api/commerce/analytics/launches/route.ts` | Merchant GET summary |
+| `app/shopify/shopify-launch-analytics-panel.tsx` | Setup help analytics UI |
+| `extensions/razzl-setup-help/assets/razzl-setup-help.js` | Track click before redirect |
 
 ## Validation status
 
-- [x] Unit tests (38 commerce tests), lint, build pass locally
-- [x] Slice 4 E2E on razzl-dev store
-- [ ] Slices 7–8 deployed to api-dev
-- [ ] Theme extension deployed to dev store
-- [ ] Live storefront CTA on dev store
+- [ ] Migration applied on dev RDS
+- [ ] Slice 9 deployed to api-dev
+- [ ] Theme extension redeployed
+- [ ] Storefront click creates event row
+- [ ] Analytics panel shows counts
 
 ## Recommended next Composer prompt
 
 ```text
-Implement Slice 9: Launch tracking — commerce_launch_event table migration (Studio db/), track CTA click before redirect in theme block, lightweight analytics UI in Shopify admin. Update CONTINUE-HERE.md.
+Implement Slice 10: Shopify Billing / App Pricing per IMPLEMENTATION-PLAN.md. Update CONTINUE-HERE.md.
 ```

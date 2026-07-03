@@ -12,6 +12,46 @@
     }
   }
 
+  function getVisitorId() {
+    var key = "razzl_visitor_id";
+    try {
+      var existing = sessionStorage.getItem(key);
+      if (existing) {
+        return existing;
+      }
+      var id = "rv_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      sessionStorage.setItem(key, id);
+      return id;
+    } catch {
+      return null;
+    }
+  }
+
+  function trackLaunchClick(apiBase, shop, productId) {
+    var payload = {
+      shop: shop,
+      productId: productId,
+      anonymousVisitorId: getVisitorId()
+    };
+    var body = JSON.stringify(payload);
+    var trackUrl = apiBase + "/api/commerce/launch-events";
+
+    if (navigator.sendBeacon) {
+      var blob = new Blob([body], { type: "application/json" });
+      navigator.sendBeacon(trackUrl, blob);
+      return;
+    }
+
+    fetch(trackUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body,
+      keepalive: true
+    }).catch(function () {
+      /* fail silently — navigation must not be blocked */
+    });
+  }
+
   function init(root) {
     if (!root || root.dataset.razzlInitialized === "1") {
       return;
@@ -52,6 +92,16 @@
           link.target = "_blank";
           link.rel = "noopener noreferrer";
         }
+
+        link.addEventListener("click", function (event) {
+          event.preventDefault();
+          trackLaunchClick(apiBase, shop, productId);
+          if (data.openMode === "new_tab") {
+            window.open(data.launchUrl, "_blank", "noopener,noreferrer");
+          } else {
+            window.location.assign(data.launchUrl);
+          }
+        });
 
         root.appendChild(link);
 
