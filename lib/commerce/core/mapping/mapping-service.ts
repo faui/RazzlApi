@@ -11,6 +11,12 @@ import {
   CommerceSyncError,
   requireLinkedShopConnection
 } from "@/lib/commerce/core/connections/adapter-context";
+import {
+  buildStudioCreateCopilotUrl,
+  buildStudioDashboardUrl
+} from "@/lib/commerce/core/studio-links";
+
+export { buildStudioDashboardUrl } from "@/lib/commerce/core/studio-links";
 
 export class CommerceMappingError extends Error {
   constructor(
@@ -51,10 +57,6 @@ export function buildLaunchUrl(chatKitBaseUrl: string, razzlCode: string): strin
 
 export function buildEditCopilotUrl(productPk: number): string {
   return `${getStudioPublicOrigin()}/app/products/${productPk}/edit`;
-}
-
-export function buildStudioDashboardUrl(): string {
-  return `${getStudioPublicOrigin()}/app/dashboard`;
 }
 
 export async function listStudioProductsForTenant(
@@ -198,6 +200,7 @@ export async function getProductMappingBoard(shop: string): Promise<{
   items: ProductMappingListItem[];
   studioProducts: StudioProductPickerItem[];
   studioDashboardUrl: string;
+  studioCreateCopilotUrl: string;
 }> {
   const { connection } = await requireLinkedShopConnection(shop);
   const tenantPk = connection.tenant_fk;
@@ -213,7 +216,8 @@ export async function getProductMappingBoard(shop: string): Promise<{
   return {
     items,
     studioProducts,
-    studioDashboardUrl: buildStudioDashboardUrl()
+    studioDashboardUrl: buildStudioDashboardUrl(),
+    studioCreateCopilotUrl: buildStudioCreateCopilotUrl({ shop })
   };
 }
 

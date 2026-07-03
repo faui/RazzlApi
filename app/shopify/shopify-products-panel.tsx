@@ -38,6 +38,7 @@ type ProductsResponse = {
   items?: ProductRow[];
   studioProducts?: StudioProduct[];
   studioDashboardUrl?: string;
+  studioCreateCopilotUrl?: string;
   error?: string;
 };
 
@@ -75,6 +76,12 @@ function copilotBadge(status: string | null, mappingStatus: string) {
   }
 }
 
+function rowCreateCopilotUrl(baseUrl: string, externalProductId: string) {
+  const url = new URL(baseUrl);
+  url.searchParams.set("shopify_product", externalProductId);
+  return url.toString();
+}
+
 export function ShopifyProductsPanel({
   shop,
   apiPublicOrigin,
@@ -84,7 +91,7 @@ export function ShopifyProductsPanel({
   const [syncStatus, setSyncStatus] = useState<SyncStatusResponse | null>(null);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [studioProducts, setStudioProducts] = useState<StudioProduct[]>([]);
-  const [studioDashboardUrl, setStudioDashboardUrl] = useState<string | null>(null);
+  const [studioCreateCopilotUrl, setStudioCreateCopilotUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -109,7 +116,7 @@ export function ShopifyProductsPanel({
         if (productsData.ok) {
           setProducts(productsData.items ?? []);
           setStudioProducts(productsData.studioProducts ?? []);
-          setStudioDashboardUrl(productsData.studioDashboardUrl ?? null);
+          setStudioCreateCopilotUrl(productsData.studioCreateCopilotUrl ?? null);
         } else {
           setMessage(productsData.error ?? "Unable to load products");
         }
@@ -147,7 +154,7 @@ export function ShopifyProductsPanel({
           if (productsData.ok) {
             setProducts(productsData.items ?? []);
             setStudioProducts(productsData.studioProducts ?? []);
-            setStudioDashboardUrl(productsData.studioDashboardUrl ?? null);
+            setStudioCreateCopilotUrl(productsData.studioCreateCopilotUrl ?? null);
           } else if (!cancelled) {
             setMessage(productsData.error ?? "Unable to load products");
           }
@@ -245,8 +252,11 @@ export function ShopifyProductsPanel({
     <section style={{ marginTop: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Products</h2>
+          <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Store products</h2>
           <p style={{ margin: "0.25rem 0 0", color: "#555" }}>
+            Map Shopify products to Razzl Copilots or create a new Copilot from a PDF.
+          </p>
+          <p style={{ margin: "0.25rem 0 0", color: "#555", fontSize: "0.9rem" }}>
             {syncStatus?.productCount ?? 0} imported
             {syncStatus?.latestRun?.completedAt
               ? ` · Last sync ${new Date(String(syncStatus.latestRun.completedAt)).toLocaleString()}`
@@ -285,10 +295,10 @@ export function ShopifyProductsPanel({
         <table style={{ width: "100%", marginTop: "1rem", borderCollapse: "collapse", fontSize: "0.92rem" }}>
           <thead>
             <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-              <th style={{ padding: "0.5rem" }}>Commerce product</th>
-              <th style={{ padding: "0.5rem" }}>Razzl product</th>
+              <th style={{ padding: "0.5rem" }}>Store product</th>
+              <th style={{ padding: "0.5rem" }}>Copilot</th>
               <th style={{ padding: "0.5rem" }}>Copilot status</th>
-              <th style={{ padding: "0.5rem" }}>CTA</th>
+              <th style={{ padding: "0.5rem" }}>Storefront CTA</th>
               <th style={{ padding: "0.5rem" }}>Actions</th>
             </tr>
           </thead>
@@ -345,15 +355,24 @@ export function ShopifyProductsPanel({
                       ) : null}
                       {product.editUrl ? (
                         <a href={product.editUrl} target="_blank" rel="noreferrer">
-                          Edit in Studio
+                          Edit Copilot in Studio
+                        </a>
+                      ) : null}
+                      {!product.productPk && studioCreateCopilotUrl ? (
+                        <a
+                          href={rowCreateCopilotUrl(studioCreateCopilotUrl, product.externalProductId)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Create Copilot
                         </a>
                       ) : null}
                       <button type="button" onClick={() => setMappingFor(product.externalProductId)}>
-                        {product.productPk ? "Change mapping" : "Map product"}
+                        {product.productPk ? "Change Copilot mapping" : "Map Copilot"}
                       </button>
                       {product.productPk ? (
                         <button type="button" onClick={() => void handleUnmap(product.externalProductId)}>
-                          Unmap
+                          Unmap Copilot
                         </button>
                       ) : null}
                     </div>
@@ -369,7 +388,7 @@ export function ShopifyProductsPanel({
                           }}
                           style={{ maxWidth: "220px" }}
                         >
-                          <option value="">Select Razzl product…</option>
+                          <option value="">Select Copilot…</option>
                           {studioProducts.map((studioProduct) => (
                             <option key={studioProduct.productPk} value={studioProduct.productPk}>
                               {studioProduct.modelName} ({studioProduct.razzlCode})
@@ -386,11 +405,14 @@ export function ShopifyProductsPanel({
         </table>
       )}
 
-      {studioDashboardUrl ? (
+      {studioCreateCopilotUrl ? (
         <p style={{ marginTop: "1rem" }}>
-          <a href={studioDashboardUrl} target="_blank" rel="noreferrer">
-            Create new copilot in Razzl Studio
+          <a href={studioCreateCopilotUrl} target="_blank" rel="noreferrer">
+            Create Copilot
           </a>
+          <span style={{ color: "#666", marginLeft: "0.35rem" }}>
+            — opens Razzl Studio Upload PDF (same as + Product Copilot)
+          </span>
         </p>
       ) : null}
     </section>

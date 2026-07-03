@@ -25,6 +25,7 @@ export async function GET(request: Request) {
       ok: true,
       shop,
       studioDashboardUrl: board.studioDashboardUrl,
+      studioCreateCopilotUrl: board.studioCreateCopilotUrl,
       studioProducts: board.studioProducts,
       items: board.items.map((item) => ({
         externalProductId: item.external_product_id,
