@@ -1,28 +1,108 @@
 .razzl-setup-help-root {
-  margin: 1rem 0;
+  margin: 12px 0 16px;
 }
 
-.razzl-setup-help-root a {
-  min-height: 44px;
+.razzl-setup-wrapper {
+  margin: 0;
+}
+
+.razzl-setup-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
+  gap: 8px;
+  padding: 13px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+  border: 1.5px solid var(--razzl-border);
+  border-radius: var(--razzl-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-height: 44px;
+  text-decoration: none;
 }
 
-.razzl-setup-help__link {
+.razzl-setup-btn--solid {
+  background-color: var(--razzl-bg);
+  color: var(--razzl-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.razzl-setup-btn--solid:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.08);
+  filter: brightness(1.08);
+}
+
+.razzl-setup-btn--solid:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  filter: brightness(0.96);
+}
+
+.razzl-setup-btn--outline {
+  background-color: transparent;
+  color: var(--razzl-bg);
+  box-shadow: none;
+}
+
+.razzl-setup-btn--outline:hover {
+  background-color: var(--razzl-bg);
+  color: var(--razzl-text);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.razzl-setup-btn--outline:active {
+  transform: translateY(0);
+  filter: brightness(0.96);
+}
+
+.razzl-setup-btn--link {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  min-height: auto;
+  color: var(--razzl-bg);
   text-decoration: underline;
+  font-weight: 500;
 }
 
-.razzl-setup-help__badge {
-  border: 1px solid currentColor;
+.razzl-setup-btn--link:hover {
+  transform: none;
+  filter: none;
+  opacity: 0.85;
+}
+
+.razzl-setup-btn--badge {
+  background-color: transparent;
+  color: var(--razzl-bg);
+  border: 1px solid var(--razzl-border);
   border-radius: 999px;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.875rem;
+  padding: 8px 16px;
+  font-size: 13px;
+  box-shadow: none;
 }
 
-.razzl-setup-help__powered {
-  margin-top: 0.35rem;
-  font-size: 0.75rem;
-  opacity: 0.75;
+.razzl-btn-icon {
+  display: flex;
+  align-items: center;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+.razzl-powered-by {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #999;
+  letter-spacing: 0.2px;
+}
+
+.razzl-powered-by strong {
+  color: #666;
+  font-weight: 600;
 }

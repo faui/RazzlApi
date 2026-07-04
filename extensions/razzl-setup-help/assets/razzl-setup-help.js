@@ -1,15 +1,20 @@
 (function () {
-  function styleClass(mode) {
-    switch (mode) {
-      case "link":
-        return "razzl-setup-help__link";
-      case "badge":
-        return "razzl-setup-help__badge";
-      case "button":
-        return "razzl-setup-help__button";
-      default:
-        return "razzl-setup-help__inherit button button--secondary";
+  var CHAT_ICON_SVG =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+    '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
+    "</svg>";
+
+  function resolveButtonVariant(themeStyle, apiStyleMode) {
+    if (apiStyleMode === "link") {
+      return "link";
     }
+    if (apiStyleMode === "badge") {
+      return "badge";
+    }
+    if (apiStyleMode === "button") {
+      return themeStyle === "outline" ? "outline" : "solid";
+    }
+    return themeStyle === "outline" ? "outline" : "solid";
   }
 
   function getVisitorId() {
@@ -52,6 +57,67 @@
     });
   }
 
+  function createChatIcon() {
+    var span = document.createElement("span");
+    span.className = "razzl-btn-icon";
+    span.innerHTML = CHAT_ICON_SVG;
+    return span;
+  }
+
+  function buildCtaButton(root, data) {
+    var themeStyle = root.dataset.buttonStyle || "solid";
+    var variant = resolveButtonVariant(themeStyle, data.styleMode);
+    var label = (data.label || root.dataset.buttonText || "Setup Copilot").trim();
+    var bg = root.dataset.bg || "#0A0A0A";
+    var text = root.dataset.text || "#FFFFFF";
+    var border = root.dataset.border || bg;
+    var radius = root.dataset.radius || "8";
+
+    var wrapper = document.createElement("div");
+    wrapper.className = "razzl-setup-wrapper";
+
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "razzl-setup-btn razzl-setup-btn--" + variant;
+    button.setAttribute("aria-label", label);
+    button.style.setProperty("--razzl-bg", bg);
+    button.style.setProperty("--razzl-text", text);
+    button.style.setProperty("--razzl-border", border);
+    button.style.setProperty("--razzl-radius", radius + "px");
+
+    if (variant !== "link") {
+      button.appendChild(createChatIcon());
+    }
+
+    var labelSpan = document.createElement("span");
+    labelSpan.textContent = label;
+    button.appendChild(labelSpan);
+
+    button.addEventListener("click", function () {
+      trackLaunchClick(
+        (root.dataset.apiBase || "https://api.razzl.com").replace(/\/$/, ""),
+        root.dataset.shop,
+        root.dataset.productId
+      );
+      if (data.openMode === "new_tab") {
+        window.open(data.launchUrl, "_blank", "noopener,noreferrer");
+      } else {
+        window.location.assign(data.launchUrl);
+      }
+    });
+
+    wrapper.appendChild(button);
+
+    if (data.showPoweredByRazzl) {
+      var powered = document.createElement("p");
+      powered.className = "razzl-powered-by";
+      powered.innerHTML = 'Powered by <strong>Razzl</strong>';
+      wrapper.appendChild(powered);
+    }
+
+    return wrapper;
+  }
+
   function init(root) {
     if (!root || root.dataset.razzlInitialized === "1") {
       return;
@@ -82,35 +148,7 @@
           return;
         }
 
-        var link = document.createElement("a");
-        link.href = data.launchUrl;
-        link.textContent = data.label || "Setup help";
-        link.className = styleClass(data.styleMode || "inherit_theme");
-        link.setAttribute("aria-label", data.label || "Setup help");
-
-        if (data.openMode === "new_tab") {
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-        }
-
-        link.addEventListener("click", function (event) {
-          event.preventDefault();
-          trackLaunchClick(apiBase, shop, productId);
-          if (data.openMode === "new_tab") {
-            window.open(data.launchUrl, "_blank", "noopener,noreferrer");
-          } else {
-            window.location.assign(data.launchUrl);
-          }
-        });
-
-        root.appendChild(link);
-
-        if (data.showPoweredByRazzl) {
-          var powered = document.createElement("div");
-          powered.className = "razzl-setup-help__powered";
-          powered.textContent = "Powered by Razzl";
-          root.appendChild(powered);
-        }
+        root.appendChild(buildCtaButton(root, data));
       })
       .catch(function () {
         /* fail closed */

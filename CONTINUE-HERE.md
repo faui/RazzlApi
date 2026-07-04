@@ -2,15 +2,15 @@
 
 ## Current status
 
-**Slice 9 implemented** — launch tracking for storefront CTA clicks.
+**Slice 9B implemented** — embedded admin UX uplift with Shopify Polaris + App Bridge.
 
 ## Current branch
 
-Merge to `main` and deploy api-dev when validated. Apply Studio migration `20260702_commerce_launch_event.sql` to shared RDS first.
+Merge to `main` and deploy api-dev when validated on dev store embedded app.
 
 ## Last completed slice
 
-**Slice 9** — `commerce_launch_event` table, CTA click tracking in theme block, Shopify admin analytics summary
+**Slice 9B** — Polaris shell, connection card, onboarding progress, IndexTable products, CTA settings previews, analytics stat cards
 
 ## Next slice
 
@@ -18,30 +18,32 @@ Merge to `main` and deploy api-dev when validated. Apply Studio migration `20260
 
 ## Exact next steps
 
-1. Apply `studio/db/migrations/20260702_commerce_launch_event.sql` on dev RDS
-2. Deploy api-dev with Slice 9
-3. Redeploy theme extension (`shopify app deploy`) so click tracking JS ships
-4. Validate: storefront CTA click → row in `commerce_launch_event` → analytics panel updates
+1. Open embedded app on `razzl-dev.myshopify.com` — verify Polaris UI, products table, sync, mapping, CTA save toast
+2. Merge Slice 9B to `main`; deploy api-dev
+3. Continue Slice 9 validation (launch events migration + theme extension) if not done
+4. Start Slice 10 billing
 
-## Files added (Slice 9)
+## Files changed (Slice 9B)
 
 | Path | Purpose |
 |------|---------|
-| `studio/db/migrations/20260702_commerce_launch_event.sql` | Launch event table (Studio schema owner) |
-| `lib/commerce/core/analytics/launch-event-repo.ts` | Insert + aggregation queries |
-| `lib/commerce/core/analytics/launch-tracking-service.ts` | Record click + analytics summary |
-| `app/api/commerce/launch-events/route.ts` | Public POST + CORS (theme block) |
-| `app/api/commerce/analytics/launches/route.ts` | Merchant GET summary |
-| `app/shopify/shopify-launch-analytics-panel.tsx` | Setup help analytics UI |
-| `extensions/razzl-setup-help/assets/razzl-setup-help.js` | Track click before redirect |
+| `app/shopify/layout.tsx` | App Bridge script + Polaris CSS |
+| `app/shopify/shopify-polaris-provider.tsx` | AppProvider + toast context |
+| `app/shopify/shopify-embedded-home.tsx` | Page shell with primary action |
+| `app/shopify/shopify-connection-card.tsx` | Connection status card |
+| `app/shopify/shopify-*-panel.tsx` | Polaris refactor of all panels |
+| `package.json` | `@shopify/polaris`, App Bridge, icons |
+| `studio/docs/commerce/IMPLEMENTATION-PLAN.md` | Slice 9B definition |
 
 ## Validation status
 
-- [ ] Migration applied on dev RDS
-- [ ] Slice 9 deployed to api-dev
-- [ ] Theme extension redeployed
-- [ ] Storefront click creates event row
-- [ ] Analytics panel shows counts
+- [ ] Embedded app renders Polaris UI on dev store
+- [ ] Products table: search, sort, kebab actions, CTA toggle
+- [ ] Sync now shows loader + last synced timestamp
+- [ ] CTA settings save shows toast
+- [ ] Analytics EmptyState + stat cards
+- [ ] Lint + build pass
+- [ ] Slice 9B deployed to api-dev
 
 ## Recommended next Composer prompt
 

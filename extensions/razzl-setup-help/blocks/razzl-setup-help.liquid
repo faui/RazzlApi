@@ -1,3 +1,4 @@
+{% comment %} Razzl Setup Copilot — storefront CTA (resolved via Razzl API) {% endcomment %}
 {% if product %}
   <div
     class="razzl-setup-help-root"
@@ -5,6 +6,12 @@
     data-shop="{{ shop.permanent_domain }}"
     data-product-id="{{ product.id }}"
     data-api-base="{{ block.settings.api_base_url }}"
+    data-button-style="{{ block.settings.button_style }}"
+    data-button-text="{{ block.settings.button_text | escape }}"
+    data-bg="{{ block.settings.button_bg_color }}"
+    data-text="{{ block.settings.button_text_color }}"
+    data-border="{{ block.settings.button_border_color }}"
+    data-radius="{{ block.settings.border_radius }}"
     {{ block.shopify_attributes }}
   ></div>
   <script src="{{ 'razzl-setup-help.js' | asset_url }}" defer></script>
@@ -13,7 +20,7 @@
 
 {% schema %}
 {
-  "name": "Razzl Setup Help",
+  "name": "Razzl Setup Copilot",
   "target": "section",
   "templates": ["product"],
   "settings": [
@@ -22,7 +29,53 @@
       "id": "api_base_url",
       "label": "Razzl API base URL",
       "default": "https://api.razzl.com",
-      "info": "Leave default unless directed by Razzl support."
+      "info": "Use https://api-dev.razzl.com for dev stores."
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button text",
+      "default": "Setup Copilot"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "Button style",
+      "default": "solid",
+      "options": [
+        { "value": "solid", "label": "Solid (filled)" },
+        { "value": "outline", "label": "Outline (ghost)" }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "border_radius",
+      "label": "Button shape",
+      "default": "8",
+      "options": [
+        { "value": "0", "label": "Sharp" },
+        { "value": "6", "label": "Rounded" },
+        { "value": "8", "label": "Soft (default)" },
+        { "value": "100", "label": "Pill" }
+      ]
+    },
+    {
+      "type": "color",
+      "id": "button_bg_color",
+      "label": "Button background color",
+      "default": "#0A0A0A"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button text color",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "color",
+      "id": "button_border_color",
+      "label": "Button border color",
+      "default": "#0A0A0A"
     }
   ]
 }

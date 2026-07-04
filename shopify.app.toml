@@ -1,8 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 name = "Razzl Product Setup Copilot"
-client_id = "SHOPIFY_API_KEY"
-application_url = "https://api.razzl.com/shopify"
+client_id = "1ae1d70c9809f5271450117519fc85cc"
+application_url = "https://api-dev.razzl.com/shopify"
 embedded = true
 
 [access_scopes]
@@ -10,7 +10,7 @@ scopes = "read_products"
 
 [auth]
 redirect_urls = [
-  "https://api.razzl.com/api/commerce/shopify/auth/callback"
+  "https://api-dev.razzl.com/api/commerce/shopify/auth/callback"
 ]
 
 [webhooks]

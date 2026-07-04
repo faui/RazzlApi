@@ -1,6 +1,22 @@
 "use client";
 
+import {
+  Banner,
+  BlockStack,
+  Box,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  InlineGrid,
+  InlineStack,
+  SkeletonBodyText,
+  Text
+} from "@shopify/polaris";
+import { ChartVerticalIcon, CursorIcon, RefreshIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useState } from "react";
+
+import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 
 type LaunchTotals = {
   totalClicks: number;
@@ -21,11 +37,41 @@ type Props = {
   tenantLinked: boolean;
 };
 
+function AnalyticsStatCard({
+  label,
+  value,
+  icon
+}: {
+  label: string;
+  value: number;
+  icon: typeof CursorIcon;
+}) {
+  return (
+    <Box padding="400" background="bg-surface-secondary" borderRadius="200" minHeight="100%">
+      <BlockStack gap="200">
+        <InlineStack align="space-between" blockAlign="center">
+          <Text as="span" variant="bodySm" tone="subdued">
+            {label}
+          </Text>
+          <Icon source={icon} tone="subdued" />
+        </InlineStack>
+        <Text as="p" variant="heading2xl">
+          {value.toLocaleString()}
+        </Text>
+        <Text as="span" variant="bodySm" tone="subdued">
+          {value > 0 ? "↑ tracking active" : "— no trend yet"}
+        </Text>
+      </BlockStack>
+    </Box>
+  );
+}
+
 export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinked }: Props) {
+  const showToast = useCommerceToast();
   const [totals, setTotals] = useState<LaunchTotals | null>(null);
   const [products, setProducts] = useState<ProductLaunchRow[]>([]);
   const [loading, setLoading] = useState(tenantLinked);
-  const [message, setMessage] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   const fetchAnalytics = useCallback(async () => {
     const response = await fetch(
@@ -47,29 +93,23 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
   }, [apiPublicOrigin, shop]);
 
   useEffect(() => {
-    if (!tenantLinked) {
-      return;
-    }
+    if (!tenantLinked) return;
 
     let cancelled = false;
 
     const run = async () => {
-      setMessage(null);
+      setErrorBanner(null);
       try {
         const result = await fetchAnalytics();
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
         setTotals(result.totals);
         setProducts(result.products);
       } catch (error) {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "Unable to load launch analytics");
+          setErrorBanner(error instanceof Error ? error.message : "Unable to load launch analytics");
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
 
@@ -79,112 +119,88 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
     };
   }, [fetchAnalytics, tenantLinked]);
 
-  if (!tenantLinked) {
-    return null;
+  async function handleRefresh() {
+    setLoading(true);
+    setErrorBanner(null);
+    try {
+      const result = await fetchAnalytics();
+      setTotals(result.totals);
+      setProducts(result.products);
+      showToast("Analytics refreshed");
+    } catch (error) {
+      setErrorBanner(error instanceof Error ? error.message : "Refresh failed");
+      showToast("Refresh failed", { isError: true });
+    } finally {
+      setLoading(false);
+    }
   }
+
+  if (!tenantLinked) return null;
 
   const hasData = (totals?.totalClicks ?? 0) > 0;
 
   return (
-    <section style={{ marginTop: "2rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Setup help analytics</h2>
-          <p style={{ margin: "0.35rem 0 0", color: "#555" }}>
-            CTA clicks from your storefront product pages.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setLoading(true);
-            setMessage(null);
-            void fetchAnalytics()
-              .then((result) => {
-                setTotals(result.totals);
-                setProducts(result.products);
-              })
-              .catch((error) => {
-                setMessage(error instanceof Error ? error.message : "Refresh failed");
-              })
-              .finally(() => {
-                setLoading(false);
-              });
-          }}
-          disabled={loading}
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#fff",
-            color: "#008060",
-            border: "1px solid #008060",
-            borderRadius: "6px",
-            cursor: loading ? "wait" : "pointer"
-          }}
-        >
-          {loading ? "Loading…" : "Refresh"}
-        </button>
-      </div>
+    <Card>
+      <BlockStack gap="400">
+        <InlineStack align="space-between" blockAlign="start">
+          <BlockStack gap="100">
+            <Text as="h2" variant="headingMd">
+              Setup help analytics
+            </Text>
+            <Text as="p" tone="subdued">
+              CTA clicks from your storefront product pages.
+            </Text>
+          </BlockStack>
+          <Button icon={RefreshIcon} onClick={() => void handleRefresh()} loading={loading} accessibilityLabel="Refresh analytics" />
+        </InlineStack>
 
-      {message ? <p style={{ marginTop: "1rem", color: "#444" }}>{message}</p> : null}
+        {errorBanner ? (
+          <Banner tone="critical" onDismiss={() => setErrorBanner(null)}>
+            {errorBanner}
+          </Banner>
+        ) : null}
 
-      {loading && !totals ? <p style={{ marginTop: "1rem" }}>Loading analytics…</p> : null}
+        {loading && !totals ? (
+          <SkeletonBodyText lines={4} />
+        ) : totals ? (
+          <InlineGrid columns={{ xs: 1, sm: 3 }} gap="300">
+            <AnalyticsStatCard label="Last 7 days" value={totals.clicksLast7Days} icon={CursorIcon} />
+            <AnalyticsStatCard label="Last 30 days" value={totals.clicksLast30Days} icon={ChartVerticalIcon} />
+            <AnalyticsStatCard label="All time" value={totals.totalClicks} icon={ChartVerticalIcon} />
+          </InlineGrid>
+        ) : null}
 
-      {totals ? (
-        <div
-          style={{
-            marginTop: "1rem",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "0.75rem"
-          }}
-        >
-          <StatCard label="Last 7 days" value={totals.clicksLast7Days} />
-          <StatCard label="Last 30 days" value={totals.clicksLast30Days} />
-          <StatCard label="All time" value={totals.totalClicks} />
-        </div>
-      ) : null}
+        {!loading && totals && !hasData ? (
+          <EmptyState
+            heading="No clicks yet"
+            image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+          >
+            <p>
+              Enable the storefront CTA on a mapped product to start tracking setup help usage.
+            </p>
+          </EmptyState>
+        ) : null}
 
-      {!loading && totals && !hasData ? (
-        <p style={{ marginTop: "1rem", color: "#555" }}>
-          No launch data yet. Enable the product-page CTA to start tracking setup help usage.
-        </p>
-      ) : null}
-
-      {products.length > 0 ? (
-        <div style={{ marginTop: "1.25rem", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
-            <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-                <th style={{ padding: "0.5rem 0.25rem" }}>Product</th>
-                <th style={{ padding: "0.5rem 0.25rem" }}>Clicks</th>
-                <th style={{ padding: "0.5rem 0.25rem" }}>Last click</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((row) => (
-                <tr key={row.externalProductId} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "0.65rem 0.25rem" }}>
+        {products.length > 0 ? (
+          <Box padding="300" background="bg-surface-secondary" borderRadius="200">
+            <BlockStack gap="200">
+              <Text as="h3" variant="headingSm">
+                Top products
+              </Text>
+              {products.slice(0, 8).map((row) => (
+                <InlineStack key={row.externalProductId} align="space-between">
+                  <Text as="span" variant="bodyMd">
                     {row.title ?? `Product ${row.externalProductId}`}
-                  </td>
-                  <td style={{ padding: "0.65rem 0.25rem" }}>{row.clickCount}</td>
-                  <td style={{ padding: "0.65rem 0.25rem" }}>
-                    {row.lastClickAt ? new Date(String(row.lastClickAt)).toLocaleString() : "—"}
-                  </td>
-                </tr>
+                  </Text>
+                  <Text as="span" variant="bodySm" tone="subdued">
+                    {row.clickCount} clicks
+                  </Text>
+                </InlineStack>
               ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={{ padding: "0.75rem 1rem", background: "#f6f6f7", borderRadius: "8px" }}>
-      <div style={{ fontSize: "0.85rem", color: "#555" }}>{label}</div>
-      <div style={{ fontSize: "1.5rem", fontWeight: 600, marginTop: "0.15rem" }}>{value}</div>
-    </div>
+            </BlockStack>
+          </Box>
+        ) : null}
+      </BlockStack>
+    </Card>
   );
 }

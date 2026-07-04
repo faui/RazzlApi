@@ -1,43 +1,58 @@
 "use client";
 
-import { ShopifyOnboardingPanel } from "@/app/shopify/shopify-onboarding-panel";
+import { BlockStack } from "@shopify/polaris";
+import { useState } from "react";
+
 import { ShopifyCtaSettingsPanel } from "@/app/shopify/shopify-cta-settings-panel";
 import { ShopifyLaunchAnalyticsPanel } from "@/app/shopify/shopify-launch-analytics-panel";
+import { ShopifyOnboardingPanel } from "@/app/shopify/shopify-onboarding-panel";
 import { ShopifyProductsPanel } from "@/app/shopify/shopify-products-panel";
-import { useState } from "react";
+
+type ProductStats = {
+  productCount: number;
+  mappedCount: number;
+  ctaEnabledCount: number;
+};
 
 type Props = {
   shop: string;
   tenantLinked: boolean;
   tenantName: string | null;
   apiPublicOrigin: string;
+  onCreateCopilotUrl?: (url: string | null) => void;
 };
 
 export function ShopifyCommercePanels({
   shop,
   tenantLinked,
   tenantName,
-  apiPublicOrigin
+  apiPublicOrigin,
+  onCreateCopilotUrl
 }: Props) {
-  const [productCount, setProductCount] = useState(0);
+  const [productStats, setProductStats] = useState<ProductStats>({
+    productCount: 0,
+    mappedCount: 0,
+    ctaEnabledCount: 0
+  });
 
   return (
-    <>
+    <BlockStack gap="500">
       <ShopifyOnboardingPanel
         shop={shop}
         tenantLinked={tenantLinked}
         tenantName={tenantName}
         apiPublicOrigin={apiPublicOrigin}
-        productCount={productCount}
+        productStats={productStats}
       />
       <ShopifyProductsPanel
         shop={shop}
         apiPublicOrigin={apiPublicOrigin}
         tenantLinked={tenantLinked}
-        onProductCountChange={setProductCount}
+        onProductStatsChange={setProductStats}
+        onCreateCopilotUrl={onCreateCopilotUrl}
       />
       <ShopifyCtaSettingsPanel shop={shop} apiPublicOrigin={apiPublicOrigin} tenantLinked={tenantLinked} />
       <ShopifyLaunchAnalyticsPanel shop={shop} apiPublicOrigin={apiPublicOrigin} tenantLinked={tenantLinked} />
-    </>
+    </BlockStack>
   );
 }

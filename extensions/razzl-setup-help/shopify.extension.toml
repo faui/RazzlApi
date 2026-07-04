@@ -4,3 +4,5 @@ api_version = "2024-10"
 type = "theme"
 name = "Razzl Setup Help"
 handle = "razzl-setup-help"
+
+uid = "5ab828fe-c6a8-37d0-c54d-a6eb1eadf7c62388e15c"

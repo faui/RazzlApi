@@ -1,6 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  ActionList,
+  Badge,
+  Banner,
+  BlockStack,
+  Box,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  IndexTable,
+  InlineStack,
+  Modal,
+  Popover,
+  Select,
+  SkeletonBodyText,
+  Text,
+  TextField,
+  Thumbnail
+} from "@shopify/polaris";
+import {
+  ClockIcon,
+  MenuHorizontalIcon,
+  SearchIcon
+} from "@shopify/polaris-icons";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 
 type SyncStatusResponse = {
   ok: boolean;
@@ -37,32 +64,30 @@ type ProductsResponse = {
   ok: boolean;
   items?: ProductRow[];
   studioProducts?: StudioProduct[];
-  studioDashboardUrl?: string;
   studioCreateCopilotUrl?: string;
   error?: string;
+};
+
+type ProductStats = {
+  productCount: number;
+  mappedCount: number;
+  ctaEnabledCount: number;
 };
 
 type Props = {
   shop: string;
   apiPublicOrigin: string;
   tenantLinked: boolean;
-  onProductCountChange?: (count: number) => void;
+  onProductStatsChange?: (stats: ProductStats) => void;
+  onCreateCopilotUrl?: (url: string | null) => void;
 };
 
-function badgeStyle(tone: "neutral" | "success" | "warning" | "info" | "critical") {
-  const colors = {
-    neutral: { bg: "#f1f2f3", color: "#444" },
-    success: { bg: "#d1f0df", color: "#0d5728" },
-    warning: { bg: "#fff3cd", color: "#856404" },
-    info: { bg: "#dbeafe", color: "#1e40af" },
-    critical: { bg: "#fde2e1", color: "#8a1f11" }
-  };
-  return colors[tone];
-}
+type SortColumn = "title" | "copilot" | "status";
+type SortDirection = "asc" | "desc";
 
 function copilotBadge(status: string | null, mappingStatus: string) {
   if (mappingStatus === "unmapped" || !status) {
-    return { label: "Unmapped", tone: "neutral" as const };
+    return { label: "Unmapped", tone: undefined as undefined };
   }
   switch (status) {
     case "active":
@@ -82,24 +107,54 @@ function rowCreateCopilotUrl(baseUrl: string, externalProductId: string) {
   return url.toString();
 }
 
+function formatSyncTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return new Date(String(value)).toLocaleString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 export function ShopifyProductsPanel({
   shop,
   apiPublicOrigin,
   tenantLinked,
-  onProductCountChange
+  onProductStatsChange,
+  onCreateCopilotUrl
 }: Props) {
+  const showToast = useCommerceToast();
   const [syncStatus, setSyncStatus] = useState<SyncStatusResponse | null>(null);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [studioProducts, setStudioProducts] = useState<StudioProduct[]>([]);
   const [studioCreateCopilotUrl, setStudioCreateCopilotUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [mappingFor, setMappingFor] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortColumn, setSortColumn] = useState<SortColumn>("title");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [activePopover, setActivePopover] = useState<string | null>(null);
+  const [mappingModal, setMappingModal] = useState<{ id: string; title: string } | null>(null);
+  const [selectedCopilotPk, setSelectedCopilotPk] = useState("");
+
+  const updateStats = useCallback(
+    (items: ProductRow[], count: number) => {
+      onProductStatsChange?.({
+        productCount: count,
+        mappedCount: items.filter((item) => item.productPk).length,
+        ctaEnabledCount: items.filter((item) => item.storefrontCtaEnabled).length
+      });
+    },
+    [onProductStatsChange]
+  );
 
   const loadData = useCallback(async () => {
-    setMessage(null);
+    setErrorBanner(null);
     try {
       const [syncRes, productsRes] = await Promise.all([
         fetch(`${apiPublicOrigin}/api/commerce/sync?shop=${encodeURIComponent(shop)}`),
@@ -110,93 +165,101 @@ export function ShopifyProductsPanel({
 
       const syncData = (await syncRes.json()) as SyncStatusResponse;
       setSyncStatus(syncData);
-      onProductCountChange?.(syncData.productCount ?? 0);
 
       if (productsRes) {
         const productsData = (await productsRes.json()) as ProductsResponse;
         if (productsData.ok) {
-          setProducts(productsData.items ?? []);
+          const items = productsData.items ?? [];
+          setProducts(items);
           setStudioProducts(productsData.studioProducts ?? []);
-          setStudioCreateCopilotUrl(productsData.studioCreateCopilotUrl ?? null);
+          const createUrl = productsData.studioCreateCopilotUrl ?? null;
+          setStudioCreateCopilotUrl(createUrl);
+          onCreateCopilotUrl?.(createUrl);
+          updateStats(items, syncData.productCount ?? items.length);
         } else {
-          setMessage(productsData.error ?? "Unable to load products");
+          setErrorBanner(productsData.error ?? "Unable to load products");
         }
+      } else {
+        updateStats([], syncData.productCount ?? 0);
       }
     } catch {
-      setMessage("Unable to load product data");
+      setErrorBanner("Unable to load product data");
     } finally {
       setLoading(false);
     }
-  }, [apiPublicOrigin, onProductCountChange, shop, tenantLinked]);
+  }, [apiPublicOrigin, onCreateCopilotUrl, shop, tenantLinked, updateStats]);
 
   useEffect(() => {
     let cancelled = false;
 
     const run = async () => {
-      setMessage(null);
-      try {
-        const [syncRes, productsRes] = await Promise.all([
-          fetch(`${apiPublicOrigin}/api/commerce/sync?shop=${encodeURIComponent(shop)}`),
-          tenantLinked
-            ? fetch(`${apiPublicOrigin}/api/commerce/products?shop=${encodeURIComponent(shop)}`)
-            : Promise.resolve(null)
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        const syncData = (await syncRes.json()) as SyncStatusResponse;
-        setSyncStatus(syncData);
-        onProductCountChange?.(syncData.productCount ?? 0);
-
-        if (productsRes) {
-          const productsData = (await productsRes.json()) as ProductsResponse;
-          if (productsData.ok) {
-            setProducts(productsData.items ?? []);
-            setStudioProducts(productsData.studioProducts ?? []);
-            setStudioCreateCopilotUrl(productsData.studioCreateCopilotUrl ?? null);
-          } else if (!cancelled) {
-            setMessage(productsData.error ?? "Unable to load products");
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setMessage("Unable to load product data");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+      setLoading(true);
+      await loadData();
+      if (cancelled) return;
     };
 
     void run();
     return () => {
       cancelled = true;
     };
-  }, [apiPublicOrigin, onProductCountChange, shop, tenantLinked]);
+  }, [loadData]);
+
+  const filteredProducts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    let rows = [...products];
+
+    if (normalizedQuery) {
+      rows = rows.filter(
+        (product) =>
+          product.title.toLowerCase().includes(normalizedQuery) ||
+          (product.mappedModelName?.toLowerCase().includes(normalizedQuery) ?? false)
+      );
+    }
+
+    if (statusFilter === "mapped") {
+      rows = rows.filter((product) => Boolean(product.productPk));
+    } else if (statusFilter === "unmapped") {
+      rows = rows.filter((product) => !product.productPk);
+    } else if (statusFilter === "cta_on") {
+      rows = rows.filter((product) => product.storefrontCtaEnabled);
+    }
+
+    rows.sort((a, b) => {
+      let cmp = 0;
+      if (sortColumn === "title") {
+        cmp = a.title.localeCompare(b.title);
+      } else if (sortColumn === "copilot") {
+        cmp = (a.mappedModelName ?? "").localeCompare(b.mappedModelName ?? "");
+      } else {
+        cmp = (a.copilotStatus ?? a.mappingStatus).localeCompare(b.copilotStatus ?? b.mappingStatus);
+      }
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+
+    return rows;
+  }, [products, query, sortColumn, sortDirection, statusFilter]);
+
+  const mappedCount = products.filter((product) => product.productPk).length;
+  const lastSynced = formatSyncTime(syncStatus?.latestRun?.completedAt);
 
   async function handleRefreshSnapshots(externalProductId?: string) {
     setRefreshing(true);
-    setMessage(null);
+    setErrorBanner(null);
     try {
       const response = await fetch(`${apiPublicOrigin}/api/commerce/mappings/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          externalProductId ? { shop, externalProductId } : { shop }
-        )
+        body: JSON.stringify(externalProductId ? { shop, externalProductId } : { shop })
       });
       const data = (await response.json()) as { ok: boolean; refreshed?: number; error?: string };
       if (!response.ok || !data.ok) {
-        setMessage(data.error ?? "Refresh failed");
+        setErrorBanner(data.error ?? "Refresh failed");
         return;
       }
-      setMessage(`Refreshed ${data.refreshed ?? 0} Copilot snapshot(s)`);
+      showToast(`Refreshed ${data.refreshed ?? 0} copilot snapshot(s)`);
       await loadData();
     } catch {
-      setMessage("Refresh failed");
+      setErrorBanner("Refresh failed");
     } finally {
       setRefreshing(false);
     }
@@ -204,27 +267,32 @@ export function ShopifyProductsPanel({
 
   async function handleSync() {
     setSyncing(true);
-    setMessage(null);
+    setErrorBanner(null);
     try {
       const response = await fetch(`${apiPublicOrigin}/api/commerce/sync?shop=${encodeURIComponent(shop)}`, {
         method: "POST"
       });
-      const data = (await response.json()) as SyncStatusResponse & { error?: string; stats?: { productsSeen?: number } };
+      const data = (await response.json()) as SyncStatusResponse & {
+        error?: string;
+        stats?: { productsSeen?: number };
+      };
       if (!response.ok || !data.ok) {
-        setMessage(data.error ?? "Sync failed");
+        setErrorBanner(data.error ?? "Sync failed");
+        showToast(data.error ?? "Sync failed", { isError: true });
       } else {
-        setMessage(`Sync complete — ${data.stats?.productsSeen ?? 0} products processed`);
+        showToast(`Sync complete — ${data.stats?.productsSeen ?? 0} products processed`);
       }
       await loadData();
     } catch {
-      setMessage("Sync failed");
+      setErrorBanner("Sync failed");
+      showToast("Sync failed", { isError: true });
     } finally {
       setSyncing(false);
     }
   }
 
   async function handleMap(externalProductId: string, productPk: number) {
-    setMessage(null);
+    setErrorBanner(null);
     const response = await fetch(`${apiPublicOrigin}/api/commerce/mappings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -232,10 +300,13 @@ export function ShopifyProductsPanel({
     });
     const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
-      setMessage(data.error ?? "Mapping failed");
+      setErrorBanner(data.error ?? "Mapping failed");
+      showToast(data.error ?? "Mapping failed", { isError: true });
       return;
     }
-    setMappingFor(null);
+    setMappingModal(null);
+    setSelectedCopilotPk("");
+    showToast("Copilot mapped");
     await loadData();
   }
 
@@ -246,9 +317,10 @@ export function ShopifyProductsPanel({
     );
     const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
-      setMessage(data.error ?? "Unmap failed");
+      showToast(data.error ?? "Unmap failed", { isError: true });
       return;
     }
+    showToast("Copilot unmapped");
     await loadData();
   }
 
@@ -260,213 +332,316 @@ export function ShopifyProductsPanel({
     });
     const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
-      setMessage(data.error ?? "CTA update failed");
+      showToast(data.error ?? "CTA update failed", { isError: true });
       return;
     }
+    showToast(enabled ? "Storefront CTA enabled" : "Storefront CTA disabled");
     await loadData();
   }
 
   if (!tenantLinked) {
     return (
-      <section style={{ marginTop: "1.5rem" }}>
-        <p>Link your Razzl Studio account before syncing Shopify products.</p>
-      </section>
+      <Card>
+        <Text as="p" tone="subdued">
+          Link your Razzl Studio account before syncing Shopify products.
+        </Text>
+      </Card>
     );
   }
 
+  const resourceName = { singular: "product", plural: "products" };
+
+  const rowMarkup = filteredProducts.map((product, index) => {
+    const badge = copilotBadge(product.copilotStatus, product.mappingStatus);
+    const isPopoverOpen = activePopover === product.externalProductId;
+
+    const actions: Array<{
+      content: string;
+      url?: string;
+      external?: boolean;
+      destructive?: boolean;
+      onAction?: () => void;
+    }> = [];
+
+    if (product.launchUrl && product.copilotStatus === "active") {
+      actions.push({
+        content: "Launch Copilot",
+        url: product.launchUrl,
+        external: true
+      });
+    }
+    if (product.editUrl) {
+      actions.push({
+        content: "Edit in Studio",
+        url: product.editUrl,
+        external: true
+      });
+    }
+    if (!product.productPk && studioCreateCopilotUrl) {
+      actions.push({
+        content: "Create Copilot",
+        url: rowCreateCopilotUrl(studioCreateCopilotUrl, product.externalProductId),
+        external: true
+      });
+    }
+    actions.push({
+      content: product.productPk ? "Change mapping" : "Map Copilot",
+      onAction: () => {
+        setActivePopover(null);
+        setMappingModal({ id: product.externalProductId, title: product.title });
+        setSelectedCopilotPk("");
+      }
+    });
+    if (product.productPk) {
+      actions.push({
+        content: "Refresh status",
+        onAction: () => {
+          setActivePopover(null);
+          void handleRefreshSnapshots(product.externalProductId);
+        }
+      });
+      actions.push({
+        content: "Unmap",
+        destructive: true,
+        onAction: () => {
+          setActivePopover(null);
+          void handleUnmap(product.externalProductId);
+        }
+      });
+    }
+
+    return (
+      <IndexTable.Row id={product.externalProductId} key={product.externalProductId} position={index}>
+        <IndexTable.Cell>
+          <InlineStack gap="300" blockAlign="center" wrap={false}>
+            {product.imageUrl ? (
+              <Thumbnail source={product.imageUrl} alt={product.title} size="small" />
+            ) : (
+              <Box minWidth="40px" minHeight="40px" background="bg-surface-secondary" borderRadius="200" />
+            )}
+            <Text as="span" variant="bodyMd" fontWeight="semibold">
+              {product.title}
+            </Text>
+          </InlineStack>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          {product.mappedModelName ? (
+            <Text as="span" variant="bodyMd">
+              {product.mappedModelName}
+            </Text>
+          ) : (
+            <Text as="span" tone="subdued" variant="bodySm">
+              No copilot mapped
+            </Text>
+          )}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          <Badge tone={badge.tone}>{badge.label}</Badge>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          {product.productPk ? (
+            <Button
+              onClick={() =>
+                void handleToggleCta(product.externalProductId, !product.storefrontCtaEnabled)
+              }
+              variant={product.storefrontCtaEnabled ? "primary" : "secondary"}
+              size="slim"
+            >
+              {product.storefrontCtaEnabled ? "On" : "Off"}
+            </Button>
+          ) : (
+            <Text as="span" tone="subdued" variant="bodySm">
+              Map first
+            </Text>
+          )}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          <Popover
+            active={isPopoverOpen}
+            activator={
+              <Button
+                icon={MenuHorizontalIcon}
+                variant="plain"
+                accessibilityLabel={`Actions for ${product.title}`}
+                onClick={() =>
+                  setActivePopover(isPopoverOpen ? null : product.externalProductId)
+                }
+              />
+            }
+            autofocusTarget="first-node"
+            onClose={() => setActivePopover(null)}
+          >
+            <ActionList items={actions} />
+          </Popover>
+        </IndexTable.Cell>
+      </IndexTable.Row>
+    );
+  });
+
   return (
-    <section style={{ marginTop: "1.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Store products</h2>
-          <p style={{ margin: "0.25rem 0 0", color: "#555" }}>
-            Map Shopify products to Razzl Copilots or create a new Copilot from a PDF.
-          </p>
-          <p style={{ margin: "0.25rem 0 0", color: "#555", fontSize: "0.9rem" }}>
-            {syncStatus?.productCount ?? 0} imported
-            {syncStatus?.latestRun?.completedAt
-              ? ` · Last sync ${new Date(String(syncStatus.latestRun.completedAt)).toLocaleString()}`
-              : ""}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() => void handleRefreshSnapshots()}
-            disabled={refreshing || loading}
-            style={{
-              padding: "0.5rem 1rem",
-              background: "#fff",
-              color: "#008060",
-              border: "1px solid #008060",
-              borderRadius: "6px",
-              cursor: refreshing ? "wait" : "pointer"
+    <>
+      <Card padding="0">
+        <Box padding="400">
+          <BlockStack gap="400">
+            <InlineStack align="space-between" blockAlign="start" gap="400">
+              <BlockStack gap="100">
+                <Text as="h2" variant="headingMd">
+                  Store products
+                </Text>
+                <Text as="p" tone="subdued">
+                  Map Shopify products to Razzl copilots or create a new copilot from a PDF.
+                </Text>
+                <InlineStack gap="200" blockAlign="center">
+                  <Badge tone="info">{`${products.length} products`}</Badge>
+                  <Badge>{`${mappedCount} mapped`}</Badge>
+                </InlineStack>
+              </BlockStack>
+              <InlineStack gap="200" blockAlign="center">
+                {lastSynced ? (
+                  <InlineStack gap="100" blockAlign="center">
+                    <Icon source={ClockIcon} tone="subdued" />
+                    <Text as="span" variant="bodySm" tone="subdued">
+                      Last synced: {lastSynced}
+                    </Text>
+                  </InlineStack>
+                ) : null}
+                <Button
+                  onClick={() => void handleRefreshSnapshots()}
+                  loading={refreshing}
+                  disabled={loading}
+                >
+                  Refresh status
+                </Button>
+                <Button variant="primary" onClick={() => void handleSync()} loading={syncing}>
+                  Sync now
+                </Button>
+              </InlineStack>
+            </InlineStack>
+
+            <InlineStack gap="300" wrap>
+              <Box minWidth="240px" width="100%">
+                <TextField
+                  label="Search products"
+                  labelHidden
+                  value={query}
+                  onChange={setQuery}
+                  placeholder="Search by product or copilot name"
+                  prefix={<Icon source={SearchIcon} />}
+                  autoComplete="off"
+                  clearButton
+                  onClearButtonClick={() => setQuery("")}
+                />
+              </Box>
+              <Select
+                label="Filter"
+                labelHidden
+                options={[
+                  { label: "All products", value: "all" },
+                  { label: "Mapped", value: "mapped" },
+                  { label: "Unmapped", value: "unmapped" },
+                  { label: "CTA enabled", value: "cta_on" }
+                ]}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+            </InlineStack>
+          </BlockStack>
+        </Box>
+
+        {errorBanner ? (
+          <Box paddingInline="400" paddingBlockEnd="300">
+            <Banner tone="critical" onDismiss={() => setErrorBanner(null)}>
+              {errorBanner}
+            </Banner>
+          </Box>
+        ) : null}
+
+        {syncStatus?.latestRun?.errorMessage ? (
+          <Box paddingInline="400" paddingBlockEnd="300">
+            <Banner tone="warning">{syncStatus.latestRun.errorMessage}</Banner>
+          </Box>
+        ) : null}
+
+        {loading ? (
+          <Box padding="400">
+            <SkeletonBodyText lines={6} />
+          </Box>
+        ) : products.length === 0 ? (
+          <EmptyState
+            heading="No products imported yet"
+            action={{ content: "Sync now", onAction: () => void handleSync(), loading: syncing }}
+            image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+          >
+            <p>Import your Shopify catalog to start mapping copilots.</p>
+          </EmptyState>
+        ) : (
+          <IndexTable
+            selectable={false}
+            resourceName={resourceName}
+            itemCount={filteredProducts.length}
+            headings={[
+              { title: "Store product", id: "title" },
+              { title: "Copilot", id: "copilot" },
+              { title: "Status", id: "status" },
+              { title: "Storefront CTA" },
+              { title: "Actions" }
+            ]}
+            sortable={[true, true, true, false, false]}
+            sortDirection={sortDirection === "asc" ? "ascending" : "descending"}
+            sortColumnIndex={sortColumn === "title" ? 0 : sortColumn === "copilot" ? 1 : 2}
+            onSort={(headingIndex, direction) => {
+              const column: SortColumn =
+                headingIndex === 0 ? "title" : headingIndex === 1 ? "copilot" : "status";
+              setSortColumn(column);
+              setSortDirection(direction === "ascending" ? "asc" : "desc");
             }}
           >
-            {refreshing ? "Refreshing…" : "Refresh Copilot status"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSync()}
-            disabled={syncing}
-            style={{
-              padding: "0.5rem 1rem",
-              background: "#008060",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: syncing ? "wait" : "pointer"
-            }}
-          >
-            {syncing ? "Syncing…" : "Sync now"}
-          </button>
-        </div>
-      </div>
+            {rowMarkup}
+          </IndexTable>
+        )}
+      </Card>
 
-      {message ? <p style={{ color: "#444", marginTop: "1rem" }}>{message}</p> : null}
-      {syncStatus?.latestRun?.errorMessage ? (
-        <p style={{ color: "#8a1f11" }}>{syncStatus.latestRun.errorMessage}</p>
-      ) : null}
-
-      {loading ? (
-        <p style={{ marginTop: "1rem" }}>Loading products…</p>
-      ) : products.length === 0 ? (
-        <p style={{ marginTop: "1rem", color: "#555" }}>
-          No Shopify products imported yet. Click <strong>Sync now</strong> to import your catalog.
-        </p>
-      ) : (
-        <table style={{ width: "100%", marginTop: "1rem", borderCollapse: "collapse", fontSize: "0.92rem" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-              <th style={{ padding: "0.5rem" }}>Store product</th>
-              <th style={{ padding: "0.5rem" }}>Copilot</th>
-              <th style={{ padding: "0.5rem" }}>Copilot status</th>
-              <th style={{ padding: "0.5rem" }}>Storefront CTA</th>
-              <th style={{ padding: "0.5rem" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => {
-              const badge = copilotBadge(product.copilotStatus, product.mappingStatus);
-              const badgeColors = badgeStyle(badge.tone);
-              return (
-                <tr key={product.externalProductId} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "0.75rem 0.5rem" }}>
-                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                      {product.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.imageUrl} alt="" width={40} height={40} style={{ borderRadius: 4, objectFit: "cover" }} />
-                      ) : null}
-                      <span>{product.title}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "0.75rem 0.5rem" }}>{product.mappedModelName ?? "—"}</td>
-                  <td style={{ padding: "0.75rem 0.5rem" }}>
-                    <span
-                      style={{
-                        background: badgeColors.bg,
-                        color: badgeColors.color,
-                        padding: "0.15rem 0.5rem",
-                        borderRadius: 999,
-                        fontSize: "0.8rem"
-                      }}
-                    >
-                      {badge.label}
-                    </span>
-                  </td>
-                  <td style={{ padding: "0.75rem 0.5rem" }}>
-                    {product.productPk ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleToggleCta(product.externalProductId, !product.storefrontCtaEnabled)
-                        }
-                        style={{ fontSize: "0.85rem" }}
-                      >
-                        {product.storefrontCtaEnabled ? "On" : "Off"}
-                      </button>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td style={{ padding: "0.75rem 0.5rem" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-                      {product.launchUrl && product.copilotStatus === "active" ? (
-                        <a href={product.launchUrl} target="_blank" rel="noreferrer">
-                          Launch
-                        </a>
-                      ) : null}
-                      {product.editUrl ? (
-                        <a href={product.editUrl} target="_blank" rel="noreferrer">
-                          Edit Copilot in Studio
-                        </a>
-                      ) : null}
-                      {!product.productPk && studioCreateCopilotUrl ? (
-                        <a
-                          href={rowCreateCopilotUrl(studioCreateCopilotUrl, product.externalProductId)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Create Copilot
-                        </a>
-                      ) : null}
-                      <button type="button" onClick={() => setMappingFor(product.externalProductId)}>
-                        {product.productPk ? "Change Copilot mapping" : "Map Copilot"}
-                      </button>
-                      {product.productPk ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleRefreshSnapshots(product.externalProductId)}
-                          disabled={refreshing}
-                        >
-                          Refresh status
-                        </button>
-                      ) : null}
-                      {product.productPk ? (
-                        <button type="button" onClick={() => void handleUnmap(product.externalProductId)}>
-                          Unmap Copilot
-                        </button>
-                      ) : null}
-                    </div>
-                    {mappingFor === product.externalProductId ? (
-                      <div style={{ marginTop: "0.5rem" }}>
-                        <select
-                          defaultValue=""
-                          onChange={(event) => {
-                            const value = Number(event.target.value);
-                            if (value) {
-                              void handleMap(product.externalProductId, value);
-                            }
-                          }}
-                          style={{ maxWidth: "220px" }}
-                        >
-                          <option value="">Select Copilot…</option>
-                          {studioProducts.map((studioProduct) => (
-                            <option key={studioProduct.productPk} value={studioProduct.productPk}>
-                              {studioProduct.modelName} ({studioProduct.razzlCode})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-
-      {studioCreateCopilotUrl ? (
-        <p style={{ marginTop: "1rem" }}>
-          <a href={studioCreateCopilotUrl} target="_blank" rel="noreferrer">
-            Create Copilot
-          </a>
-          <span style={{ color: "#666", marginLeft: "0.35rem" }}>
-            — opens Razzl Studio Upload PDF (same as + Product Copilot)
-          </span>
-        </p>
-      ) : null}
-    </section>
+      <Modal
+        open={mappingModal !== null}
+        onClose={() => {
+          setMappingModal(null);
+          setSelectedCopilotPk("");
+        }}
+        title={mappingModal ? `Map copilot — ${mappingModal.title}` : "Map copilot"}
+        primaryAction={{
+          content: "Map copilot",
+          disabled: !selectedCopilotPk,
+          onAction: () => {
+            if (mappingModal && selectedCopilotPk) {
+              void handleMap(mappingModal.id, Number(selectedCopilotPk));
+            }
+          }
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => {
+              setMappingModal(null);
+              setSelectedCopilotPk("");
+            }
+          }
+        ]}
+      >
+        <Modal.Section>
+          <Select
+            label="Razzl copilot"
+            options={[
+              { label: "Select copilot…", value: "" },
+              ...studioProducts.map((studioProduct) => ({
+                label: `${studioProduct.modelName} (${studioProduct.razzlCode})`,
+                value: String(studioProduct.productPk)
+              }))
+            ]}
+            value={selectedCopilotPk}
+            onChange={setSelectedCopilotPk}
+          />
+        </Modal.Section>
+      </Modal>
+    </>
   );
 }
