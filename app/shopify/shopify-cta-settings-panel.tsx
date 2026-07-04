@@ -7,9 +7,9 @@ import {
   Box,
   Button,
   Card,
-  Checkbox,
   FormLayout,
   Icon,
+  InlineGrid,
   InlineStack,
   Select,
   SkeletonBodyText,
@@ -19,6 +19,7 @@ import { CursorIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useState } from "react";
 
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
+import { ShopifySwitch } from "@/app/shopify/shopify-switch";
 
 type CtaConfig = {
   ctaEnabledDefault: boolean;
@@ -70,25 +71,6 @@ function CtaPreview({
 
   return (
     <Button variant={styleMode === "button" ? "primary" : "secondary"}>{label}</Button>
-  );
-}
-
-function StyleModePreview({ mode }: { mode: CtaConfig["ctaStyleMode"] }) {
-  const labels: Record<CtaConfig["ctaStyleMode"], string> = {
-    inherit_theme: "Theme",
-    button: "Button",
-    link: "Link",
-    badge: "Badge"
-  };
-  return (
-    <Box padding="200" background="bg-surface-secondary" borderRadius="200" minWidth="72px">
-      <BlockStack gap="100" inlineAlign="center">
-        <CtaPreview label="Preview" styleMode={mode} />
-        <Text as="span" variant="bodySm" tone="subdued">
-          {labels[mode]}
-        </Text>
-      </BlockStack>
-    </Box>
   );
 }
 
@@ -184,8 +166,8 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
   if (!tenantLinked) return null;
 
   return (
-    <Card>
-      <BlockStack gap="400">
+    <Card padding="0">
+      <Box padding="400" background="bg-surface-secondary">
         <InlineStack gap="200" blockAlign="center">
           <Icon source={CursorIcon} tone="base" />
           <BlockStack gap="100">
@@ -193,125 +175,128 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
               Storefront CTA settings
             </Text>
             <Text as="p" tone="subdued">
-              These settings control the Setup Copilot button that appears on your product pages.
+              These settings control the Setup Copilot button on your product pages.
             </Text>
           </BlockStack>
         </InlineStack>
+      </Box>
 
-        {errorBanner ? (
-          <Banner tone="critical" onDismiss={() => setErrorBanner(null)}>
-            {errorBanner}
-          </Banner>
-        ) : null}
+      <Box padding="400">
+        <BlockStack gap="500">
+          {errorBanner ? (
+            <Banner tone="critical" onDismiss={() => setErrorBanner(null)}>
+              {errorBanner}
+            </Banner>
+          ) : null}
 
-        {loading ? (
-          <SkeletonBodyText lines={5} />
-        ) : config ? (
-          <form onSubmit={(event) => void handleSave(event)}>
-            <FormLayout>
-              <FormLayout.Group>
-                <Select
-                  label="Default button label"
-                  options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
-                  value={config.ctaLabelDefault}
-                  onChange={(value) =>
-                    setConfig((prev) => (prev ? { ...prev, ctaLabelDefault: value } : prev))
-                  }
-                />
-                <Box paddingBlockStart="600">
+          {loading ? (
+            <SkeletonBodyText lines={5} />
+          ) : config ? (
+            <form onSubmit={(event) => void handleSave(event)}>
+              <BlockStack gap="500">
+                <InlineGrid columns={{ xs: 1, md: 2 }} gap="400">
+                  <Select
+                    label="Default button label"
+                    options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
+                    value={config.ctaLabelDefault}
+                    onChange={(value) =>
+                      setConfig((prev) => (prev ? { ...prev, ctaLabelDefault: value } : prev))
+                    }
+                  />
                   <BlockStack gap="200">
                     <Text as="span" variant="bodySm" tone="subdued">
                       Live preview
                     </Text>
-                    <CtaPreview label={config.ctaLabelDefault} styleMode={config.ctaStyleMode} />
-                    {config.showPoweredByRazzl ? (
-                      <Text as="p" variant="bodySm" tone="subdued">
-                        Powered by <strong>Razzl</strong>
-                      </Text>
-                    ) : null}
+                    <div className="shopify-cta-preview-panel">
+                      <BlockStack gap="200" inlineAlign="start">
+                        <CtaPreview label={config.ctaLabelDefault} styleMode={config.ctaStyleMode} />
+                        {config.showPoweredByRazzl ? (
+                          <Text as="p" variant="bodySm" tone="subdued">
+                            Powered by <strong>Razzl</strong>
+                          </Text>
+                        ) : null}
+                      </BlockStack>
+                    </div>
                   </BlockStack>
-                </Box>
-              </FormLayout.Group>
+                </InlineGrid>
 
-              <Select
-                label="Open Copilot in"
-                options={[
-                  { label: "New tab ↗", value: "new_tab" },
-                  { label: "Same tab", value: "same_tab" }
-                ]}
-                value={config.ctaOpenMode}
-                onChange={(value) =>
-                  setConfig((prev) =>
-                    prev ? { ...prev, ctaOpenMode: value as CtaConfig["ctaOpenMode"] } : prev
-                  )
-                }
-              />
+                <FormLayout>
+                  <FormLayout.Group>
+                    <Select
+                      label="Open Copilot in"
+                      options={[
+                        { label: "New tab ↗", value: "new_tab" },
+                        { label: "Same tab", value: "same_tab" }
+                      ]}
+                      value={config.ctaOpenMode}
+                      onChange={(value) =>
+                        setConfig((prev) =>
+                          prev ? { ...prev, ctaOpenMode: value as CtaConfig["ctaOpenMode"] } : prev
+                        )
+                      }
+                    />
+                    <Select
+                      label="Style mode"
+                      options={[
+                        { label: "Inherit theme", value: "inherit_theme" },
+                        { label: "Button", value: "button" },
+                        { label: "Link", value: "link" },
+                        { label: "Badge", value: "badge" }
+                      ]}
+                      value={config.ctaStyleMode}
+                      onChange={(value) =>
+                        setConfig((prev) =>
+                          prev ? { ...prev, ctaStyleMode: value as CtaConfig["ctaStyleMode"] } : prev
+                        )
+                      }
+                    />
+                  </FormLayout.Group>
+                </FormLayout>
 
-              <BlockStack gap="200">
-                <Select
-                  label="Style mode"
-                  options={[
-                    { label: "Inherit theme", value: "inherit_theme" },
-                    { label: "Button", value: "button" },
-                    { label: "Link", value: "link" },
-                    { label: "Badge", value: "badge" }
-                  ]}
-                  value={config.ctaStyleMode}
-                  onChange={(value) =>
-                    setConfig((prev) =>
-                      prev ? { ...prev, ctaStyleMode: value as CtaConfig["ctaStyleMode"] } : prev
-                    )
-                  }
-                />
-                <InlineStack gap="200">
-                  {(["inherit_theme", "button", "link", "badge"] as const).map((mode) => (
-                    <StyleModePreview key={mode} mode={mode} />
-                  ))}
+                <InlineStack align="space-between" blockAlign="center">
+                  <InlineStack gap="200" blockAlign="center">
+                    <ShopifySwitch
+                      checked={config.showPoweredByRazzl}
+                      label='Show "Powered by Razzl"'
+                      onChange={(checked) =>
+                        setConfig((prev) => (prev ? { ...prev, showPoweredByRazzl: checked } : prev))
+                      }
+                    />
+                    <Text as="span" variant="bodyMd">
+                      Show &quot;Powered by Razzl&quot;
+                    </Text>
+                  </InlineStack>
+                  <Button submit variant="primary" loading={saving}>
+                    Save CTA settings
+                  </Button>
                 </InlineStack>
-                <Text as="p" variant="bodySm" tone="subdued">
-                  Theme editor colors may override button appearance on your storefront.
+              </BlockStack>
+            </form>
+          ) : null}
+
+          {themeInstructions ? (
+            <Box padding="400" background="bg-surface-secondary" borderRadius="200">
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm">
+                  {themeInstructions.title}
                 </Text>
+                <BlockStack gap="100">
+                  {themeInstructions.steps.map((step) => (
+                    <Text as="p" key={step} variant="bodyMd">
+                      • {step}
+                    </Text>
+                  ))}
+                </BlockStack>
+                {themeInstructions.deepLinkUrl ? (
+                  <Button url={themeInstructions.deepLinkUrl} external>
+                    Open theme editor
+                  </Button>
+                ) : null}
               </BlockStack>
-
-              <Checkbox
-                label='Show "Powered by Razzl"'
-                checked={config.showPoweredByRazzl}
-                onChange={(checked) =>
-                  setConfig((prev) => (prev ? { ...prev, showPoweredByRazzl: checked } : prev))
-                }
-              />
-
-              <InlineStack align="end">
-                <Button submit variant="primary" loading={saving}>
-                  Save CTA settings
-                </Button>
-              </InlineStack>
-            </FormLayout>
-          </form>
-        ) : null}
-
-        {themeInstructions ? (
-          <Box padding="400" background="bg-surface-secondary" borderRadius="200">
-            <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">
-                {themeInstructions.title}
-              </Text>
-              <BlockStack gap="100">
-                {themeInstructions.steps.map((step) => (
-                  <Text as="p" key={step} variant="bodyMd">
-                    • {step}
-                  </Text>
-                ))}
-              </BlockStack>
-              {themeInstructions.deepLinkUrl ? (
-                <Button url={themeInstructions.deepLinkUrl} external>
-                  Open theme editor
-                </Button>
-              ) : null}
-            </BlockStack>
-          </Box>
-        ) : null}
-      </BlockStack>
+            </Box>
+          ) : null}
+        </BlockStack>
+      </Box>
     </Card>
   );
 }

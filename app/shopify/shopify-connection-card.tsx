@@ -3,14 +3,17 @@
 import {
   Avatar,
   Badge,
+  Banner,
   BlockStack,
   Box,
   Card,
+  Icon,
   InlineGrid,
   InlineStack,
   Link,
   Text
 } from "@shopify/polaris";
+import { StoreIcon } from "@shopify/polaris-icons";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 
 type Props = {
@@ -28,21 +31,6 @@ function storeInitials(name: string | null, domain: string | null): string {
   return source.slice(0, 2).toUpperCase();
 }
 
-function installStatusBadge(status: ConnectionStatusSummary["installStatus"]) {
-  switch (status) {
-    case "connected":
-      return <Badge tone="success">Connected</Badge>;
-    case "installed":
-      return <Badge tone="info">Installed</Badge>;
-    case "uninstalled":
-      return <Badge tone="critical">Uninstalled</Badge>;
-    case "disconnected":
-      return <Badge tone="warning">Disconnected</Badge>;
-    default:
-      return <Badge>{status}</Badge>;
-  }
-}
-
 export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) {
   if (!shop) {
     return (
@@ -57,14 +45,9 @@ export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) 
   if (showInstallHint || !status) {
     return (
       <Card>
-        <BlockStack gap="200">
-          <Text as="h2" variant="headingMd">
-            Connection
-          </Text>
-          <Text as="p" tone="subdued">
-            Not installed yet. Complete OAuth install to connect <strong>{shop}</strong>.
-          </Text>
-        </BlockStack>
+        <Banner tone="warning" title="Store not connected">
+          Complete OAuth install to connect <strong>{shop}</strong>.
+        </Banner>
       </Card>
     );
   }
@@ -72,79 +55,82 @@ export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) 
   const linked = status.tenantLinked;
 
   return (
-    <Card>
-      <BlockStack gap="400">
-        <InlineStack align="space-between" blockAlign="center">
-          <Text as="h2" variant="headingMd">
-            Connection
-          </Text>
-          {linked ? (
-            <InlineStack gap="200" blockAlign="center">
-              <Box
-                as="span"
-                background="bg-fill-success"
-                borderRadius="full"
-                minWidth="8px"
-                minHeight="8px"
-              />
-              <Text as="span" tone="success" variant="bodySm">
-                Connected
-              </Text>
-            </InlineStack>
-          ) : (
-            <Badge tone="attention">Account not linked</Badge>
-          )}
-        </InlineStack>
+    <Card padding="0">
+      {linked ? (
+        <Banner tone="success" title="Store connected to Razzl">
+          Your Shopify store is linked and ready to sync products.
+        </Banner>
+      ) : (
+        <Banner tone="warning" title="Razzl account not linked">
+          Connect your Razzl Studio account to sync products and enable storefront CTAs.
+        </Banner>
+      )}
 
-        <InlineGrid columns={{ xs: 1, sm: 2 }} gap="400">
-          <InlineStack gap="300" blockAlign="center">
-            <Avatar
-              customer
-              size="md"
-              name={status.storeDisplayName ?? shop}
-              initials={storeInitials(status.storeDisplayName, shop)}
-            />
-            <BlockStack gap="100">
-              <Text as="span" variant="bodySm" tone="subdued">
-                Shopify store
-              </Text>
-              <Text as="p" variant="bodyMd" fontWeight="semibold">
-                {status.storeDisplayName ?? shop}
-              </Text>
-              <Text as="p" variant="bodySm" tone="subdued">
-                {shop}
-              </Text>
-            </BlockStack>
+      <Box padding="400">
+        <BlockStack gap="400">
+          <InlineStack gap="200" blockAlign="center">
+            <Icon source={StoreIcon} tone="base" />
+            <Text as="h2" variant="headingMd">
+              Connection
+            </Text>
+            {linked ? <Badge tone="success">Live</Badge> : <Badge tone="attention">Action required</Badge>}
           </InlineStack>
 
-          <BlockStack gap="200">
-            <InlineStack align="space-between">
-              <Text as="span" variant="bodySm" tone="subdued">
-                Install status
-              </Text>
-              {installStatusBadge(status.installStatus)}
-            </InlineStack>
-            <BlockStack gap="100">
-              <Text as="span" variant="bodySm" tone="subdued">
-                Razzl account
-              </Text>
-              <Text as="p" variant="bodyMd" fontWeight="semibold">
-                {linked ? status.tenantName ?? `Tenant #${status.tenantPk}` : "Not linked"}
-              </Text>
-            </BlockStack>
-          </BlockStack>
-        </InlineGrid>
+          <div className="shopify-connection-panel">
+            <Box padding="400">
+              <InlineGrid columns={{ xs: 1, sm: 2 }} gap="400">
+                <InlineStack gap="300" blockAlign="center">
+                  <Avatar
+                    size="lg"
+                    name={status.storeDisplayName ?? shop}
+                    initials={storeInitials(status.storeDisplayName, shop)}
+                  />
+                  <BlockStack gap="100">
+                    <Text as="span" variant="bodySm" tone="subdued">
+                      Shopify store
+                    </Text>
+                    <Text as="p" variant="headingSm">
+                      {status.storeDisplayName ?? shop}
+                    </Text>
+                    <Text as="p" variant="bodySm" tone="subdued">
+                      {shop}
+                    </Text>
+                  </BlockStack>
+                </InlineStack>
 
-        {linked ? (
-          <Text as="p" variant="bodySm" tone="subdued">
-            To disconnect, manage your store connection in{" "}
-            <Link url="https://studio.razzl.com/app/profile" target="_blank">
-              Razzl Studio
-            </Link>
-            .
-          </Text>
-        ) : null}
-      </BlockStack>
+                <BlockStack gap="300">
+                  <BlockStack gap="100">
+                    <Text as="span" variant="bodySm" tone="subdued">
+                      Install status
+                    </Text>
+                    <Badge tone={status.installStatus === "connected" ? "success" : "info"}>
+                      {status.installStatus}
+                    </Badge>
+                  </BlockStack>
+                  <BlockStack gap="100">
+                    <Text as="span" variant="bodySm" tone="subdued">
+                      Razzl account
+                    </Text>
+                    <Text as="p" variant="headingSm">
+                      {linked ? status.tenantName ?? `Tenant #${status.tenantPk}` : "Not linked"}
+                    </Text>
+                  </BlockStack>
+                </BlockStack>
+              </InlineGrid>
+            </Box>
+          </div>
+
+          {linked ? (
+            <Text as="p" variant="bodySm" tone="subdued">
+              To disconnect, manage your store in{" "}
+              <Link url="https://studio.razzl.com/app/profile" target="_blank">
+                Razzl Studio
+              </Link>
+              .
+            </Text>
+          ) : null}
+        </BlockStack>
+      </Box>
     </Card>
   );
 }

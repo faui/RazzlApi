@@ -2,15 +2,15 @@
 
 ## Current status
 
-**Slice 9B implemented** — embedded admin UX uplift with Shopify Polaris + App Bridge.
+**Slice 9B.1 implemented** — premium UX polish on embedded admin (switch toggles, stepper, connection banners, CTA preview panel).
 
 ## Current branch
 
-Merge to `main` and deploy api-dev when validated on dev store embedded app.
+Merge to `main` and deploy api-dev. **Team must refresh embedded app** — prior review may have been pre–Slice 9B deploy (kebab menus were already in 9B).
 
 ## Last completed slice
 
-**Slice 9B** — Polaris shell, connection card, onboarding progress, IndexTable products, CTA settings previews, analytics stat cards
+**Slice 9B.1** — visual polish: connection banners, onboarding stepper, outlined Unmapped badge, CTA switch, row hover, CTA preview panel
 
 ## Next slice
 
@@ -18,32 +18,31 @@ Merge to `main` and deploy api-dev when validated on dev store embedded app.
 
 ## Exact next steps
 
-1. Open embedded app on `razzl-dev.myshopify.com` — verify Polaris UI, products table, sync, mapping, CTA save toast
-2. Merge Slice 9B to `main`; deploy api-dev
-3. Continue Slice 9 validation (launch events migration + theme extension) if not done
-4. Start Slice 10 billing
+1. Deploy api-dev with Slice 9B + 9B.1
+2. Hard-refresh Shopify embedded app (or re-open from Admin → Apps)
+3. Validate products table: single ⋯ kebab per row, switch CTA, outlined Unmapped badge
+4. Start Slice 10 when UX sign-off received
 
-## Files changed (Slice 9B)
+## Files changed (Slice 9B.1)
 
 | Path | Purpose |
 |------|---------|
-| `app/shopify/layout.tsx` | App Bridge script + Polaris CSS |
-| `app/shopify/shopify-polaris-provider.tsx` | AppProvider + toast context |
-| `app/shopify/shopify-embedded-home.tsx` | Page shell with primary action |
-| `app/shopify/shopify-connection-card.tsx` | Connection status card |
-| `app/shopify/shopify-*-panel.tsx` | Polaris refactor of all panels |
-| `package.json` | `@shopify/polaris`, App Bridge, icons |
-| `studio/docs/commerce/IMPLEMENTATION-PLAN.md` | Slice 9B definition |
+| `app/shopify/shopify-admin.css` | Row hover, switch, badges, preview panel |
+| `app/shopify/shopify-switch.tsx` | Toggle control |
+| `app/shopify/status-badge.tsx` | Outlined Unmapped + filled status badges |
+| `app/shopify/onboarding-stepper.tsx` | Numbered step circles |
+| `app/shopify/shopify-connection-card.tsx` | Banner + nested status panel |
+| `app/shopify/shopify-onboarding-panel.tsx` | Progress % + stepper |
+| `app/shopify/shopify-products-panel.tsx` | Switch, badges, table hover |
+| `app/shopify/shopify-cta-settings-panel.tsx` | Preview panel layout |
+| `app/shopify/shopify-launch-analytics-panel.tsx` | EmptyState container |
 
 ## Validation status
 
-- [ ] Embedded app renders Polaris UI on dev store
-- [ ] Products table: search, sort, kebab actions, CTA toggle
-- [ ] Sync now shows loader + last synced timestamp
-- [ ] CTA settings save shows toast
-- [ ] Analytics EmptyState + stat cards
-- [ ] Lint + build pass
-- [ ] Slice 9B deployed to api-dev
+- [ ] api-dev deployed with 9B.1
+- [ ] Team confirms post-deploy UI (not pre-9B screenshot)
+- [ ] Lint + build pass locally
+- [ ] Slice 10 ready to start
 
 ## Recommended next Composer prompt
 

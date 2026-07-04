@@ -2,7 +2,6 @@
 
 import {
   ActionList,
-  Badge,
   Banner,
   BlockStack,
   Box,
@@ -28,6 +27,8 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
+import { ShopifySwitch } from "@/app/shopify/shopify-switch";
+import { StatusBadge } from "@/app/shopify/status-badge";
 
 type SyncStatusResponse = {
   ok: boolean;
@@ -85,19 +86,38 @@ type Props = {
 type SortColumn = "title" | "copilot" | "status";
 type SortDirection = "asc" | "desc";
 
-function copilotBadge(status: string | null, mappingStatus: string) {
+function mappingStatusVariant(
+  status: string | null,
+  mappingStatus: string
+): "unmapped" | "published" | "draft" | "processing" | "error" {
   if (mappingStatus === "unmapped" || !status) {
-    return { label: "Unmapped", tone: undefined as undefined };
+    return "unmapped";
   }
   switch (status) {
     case "active":
-      return { label: "Published", tone: "success" as const };
+      return "published";
     case "in-progress":
-      return { label: "Processing", tone: "info" as const };
+      return "processing";
     case "processing-error":
-      return { label: "Error", tone: "critical" as const };
+      return "error";
     default:
-      return { label: "Draft", tone: "warning" as const };
+      return "draft";
+  }
+}
+
+function mappingStatusLabel(status: string | null, mappingStatus: string): string {
+  if (mappingStatus === "unmapped" || !status) {
+    return "Unmapped";
+  }
+  switch (status) {
+    case "active":
+      return "Published";
+    case "in-progress":
+      return "Processing";
+    case "processing-error":
+      return "Error";
+    default:
+      return "Draft";
   }
 }
 
@@ -352,7 +372,8 @@ export function ShopifyProductsPanel({
   const resourceName = { singular: "product", plural: "products" };
 
   const rowMarkup = filteredProducts.map((product, index) => {
-    const badge = copilotBadge(product.copilotStatus, product.mappingStatus);
+    const statusVariant = mappingStatusVariant(product.copilotStatus, product.mappingStatus);
+    const statusLabel = mappingStatusLabel(product.copilotStatus, product.mappingStatus);
     const isPopoverOpen = activePopover === product.externalProductId;
 
     const actions: Array<{
@@ -436,19 +457,22 @@ export function ShopifyProductsPanel({
           )}
         </IndexTable.Cell>
         <IndexTable.Cell>
-          <Badge tone={badge.tone}>{badge.label}</Badge>
+          <StatusBadge label={statusLabel} variant={statusVariant} />
         </IndexTable.Cell>
         <IndexTable.Cell>
           {product.productPk ? (
-            <Button
-              onClick={() =>
-                void handleToggleCta(product.externalProductId, !product.storefrontCtaEnabled)
-              }
-              variant={product.storefrontCtaEnabled ? "primary" : "secondary"}
-              size="slim"
-            >
-              {product.storefrontCtaEnabled ? "On" : "Off"}
-            </Button>
+            <InlineStack gap="200" blockAlign="center" wrap={false}>
+              <ShopifySwitch
+                checked={product.storefrontCtaEnabled}
+                label={`Storefront CTA for ${product.title}`}
+                onChange={(enabled) =>
+                  void handleToggleCta(product.externalProductId, enabled)
+                }
+              />
+              <Text as="span" variant="bodySm" tone={product.storefrontCtaEnabled ? "success" : "subdued"}>
+                {product.storefrontCtaEnabled ? "On" : "Off"}
+              </Text>
+            </InlineStack>
           ) : (
             <Text as="span" tone="subdued" variant="bodySm">
               Map first
@@ -491,10 +515,9 @@ export function ShopifyProductsPanel({
                 <Text as="p" tone="subdued">
                   Map Shopify products to Razzl copilots or create a new copilot from a PDF.
                 </Text>
-                <InlineStack gap="200" blockAlign="center">
-                  <Badge tone="info">{`${products.length} products`}</Badge>
-                  <Badge>{`${mappedCount} mapped`}</Badge>
-                </InlineStack>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  {products.length} products · {mappedCount} mapped
+                </Text>
               </BlockStack>
               <InlineStack gap="200" blockAlign="center">
                 {lastSynced ? (
@@ -575,7 +598,8 @@ export function ShopifyProductsPanel({
             <p>Import your Shopify catalog to start mapping copilots.</p>
           </EmptyState>
         ) : (
-          <IndexTable
+          <div className="shopify-index-table-wrap">
+            <IndexTable
             selectable={false}
             resourceName={resourceName}
             itemCount={filteredProducts.length}
@@ -598,6 +622,7 @@ export function ShopifyProductsPanel({
           >
             {rowMarkup}
           </IndexTable>
+          </div>
         )}
       </Card>
 

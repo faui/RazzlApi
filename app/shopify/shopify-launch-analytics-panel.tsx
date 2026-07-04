@@ -171,14 +171,17 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
         ) : null}
 
         {!loading && totals && !hasData ? (
-          <EmptyState
-            heading="No clicks yet"
-            image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-          >
-            <p>
-              Enable the storefront CTA on a mapped product to start tracking setup help usage.
-            </p>
-          </EmptyState>
+          <Box padding="600" background="bg-surface-secondary" borderRadius="200">
+            <EmptyState
+              heading="No clicks yet"
+              image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+              fullWidth
+            >
+              <p>
+                Enable the storefront CTA on a mapped product to start tracking setup help usage.
+              </p>
+            </EmptyState>
+          </Box>
         ) : null}
 
         {products.length > 0 ? (

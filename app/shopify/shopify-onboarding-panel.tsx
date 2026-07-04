@@ -10,9 +10,10 @@ import {
   ProgressBar,
   Text
 } from "@shopify/polaris";
-import { CheckCircleIcon, CircleChevronRightIcon } from "@shopify/polaris-icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircleIcon } from "@shopify/polaris-icons";
+import { useCallback, useMemo, useState } from "react";
 
+import { OnboardingStepper } from "@/app/shopify/onboarding-stepper";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 
 type LinkStartResponse = {
@@ -52,7 +53,6 @@ export function ShopifyOnboardingPanel({
 }: Props) {
   const showToast = useCommerceToast();
   const [showChecklistDetails, setShowChecklistDetails] = useState(true);
-  const [animated, setAnimated] = useState(false);
 
   const steps: Step[] = useMemo(
     () => [
@@ -86,12 +86,8 @@ export function ShopifyOnboardingPanel({
 
   const completedCount = steps.filter((step) => step.complete).length;
   const allComplete = completedCount === steps.length;
+  const progress = Math.round((completedCount / steps.length) * 100);
   const checklistOpen = !allComplete || showChecklistDetails;
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setAnimated(true), 120);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   const openStudioLink = useCallback(
     async (mode: "login" | "signup") => {
@@ -132,16 +128,14 @@ export function ShopifyOnboardingPanel({
   return (
     <Card>
       <BlockStack gap="400">
-        <BlockStack gap="200">
+        <BlockStack gap="300">
           <InlineStack align="space-between" blockAlign="center">
             <Text as="h2" variant="headingMd">
               Onboarding
             </Text>
-            <Text as="span" variant="bodySm" tone="subdued">
-              {completedCount} of {steps.length} steps complete
-            </Text>
+            <BadgeLikeProgress count={completedCount} total={steps.length} percent={progress} />
           </InlineStack>
-          <ProgressBar progress={(completedCount / steps.length) * 100} size="small" tone="primary" />
+          <ProgressBar progress={progress} size="small" tone="primary" />
         </BlockStack>
 
         {!tenantLinked ? (
@@ -166,32 +160,7 @@ export function ShopifyOnboardingPanel({
         )}
 
         <Collapsible open={checklistOpen} id="onboarding-steps">
-          <BlockStack gap="300">
-            {steps.map((step) => (
-              <InlineStack key={step.id} gap="300" blockAlign="start" wrap={false}>
-                <div
-                  style={{
-                    opacity: animated && step.complete ? 1 : 0.85,
-                    transform: animated && step.complete ? "scale(1)" : "scale(0.95)",
-                    transition: "transform 0.25s ease, opacity 0.25s ease"
-                  }}
-                >
-                  <Icon
-                    source={step.complete ? CheckCircleIcon : CircleChevronRightIcon}
-                    tone={step.complete ? "success" : step.current ? "primary" : "subdued"}
-                  />
-                </div>
-                <Text
-                  as="span"
-                  variant="bodyMd"
-                  fontWeight={step.current ? "semibold" : "regular"}
-                  tone={step.complete ? "subdued" : undefined}
-                >
-                  {step.label}
-                </Text>
-              </InlineStack>
-            ))}
-          </BlockStack>
+          <OnboardingStepper steps={steps} />
         </Collapsible>
 
         {allComplete ? (
@@ -201,5 +170,26 @@ export function ShopifyOnboardingPanel({
         ) : null}
       </BlockStack>
     </Card>
+  );
+}
+
+function BadgeLikeProgress({
+  count,
+  total,
+  percent
+}: {
+  count: number;
+  total: number;
+  percent: number;
+}) {
+  return (
+    <InlineStack gap="200" blockAlign="center">
+      <Text as="span" variant="bodySm" tone="subdued">
+        {count} of {total} complete
+      </Text>
+      <Text as="span" variant="bodySm" fontWeight="semibold">
+        {percent}%
+      </Text>
+    </InlineStack>
   );
 }
