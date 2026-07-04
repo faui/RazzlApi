@@ -40,8 +40,11 @@ type Props = {
 const ANALYTICS_EMPTY_ILLUSTRATION = `data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none">
     <circle cx="40" cy="40" r="34" stroke="#8C9196" stroke-width="1.5" stroke-dasharray="5 4"/>
-    <path fill="#8C9196" d="M44 24c1.1 0 2 .9 2 2v14.8l4.6-4.6 1.4 1.4-7 7-7-7 1.4-1.4 4.6 4.6V26c0-1.1.9-2 2-2h2z"/>
-    <path fill="#8C9196" d="M36 52h8v2h-8v-2z"/>
+    <g transform="translate(24 24)">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <path d="M11.5 14V8.5a1.5 1.5 0 1 1 3 0V14M14.5 14V7.5a1.5 1.5 0 1 1 3 0V14M17.5 14v-2a1.5 1.5 0 1 1 3 0v5.5a5.5 5.5 0 0 1-5.5 5.5h-1.5a4.5 4.5 0 0 1-4.5-4.5V14M11.5 14H9a1.5 1.5 0 0 0-1.5 1.5v1A1.5 1.5 0 0 0 9 18h.5" stroke="#8C9196" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </g>
   </svg>`
 )}`;
 

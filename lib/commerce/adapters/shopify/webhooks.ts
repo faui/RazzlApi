@@ -30,6 +30,14 @@ const PRODUCT_WEBHOOK_TOPICS = new Set([
   "products/delete"
 ]);
 
+export const SHOPIFY_PRODUCT_WEBHOOK_TOPICS = PRODUCT_WEBHOOK_TOPICS;
+
+export const SHOPIFY_COMPLIANCE_WEBHOOK_TOPICS = new Set([
+  "customers/data_request",
+  "customers/redact",
+  "shop/redact"
+]);
+
 function buildIdempotencyKey(topic: string, payload: ShopifyRestProduct): string {
   const productId = String(payload.id);
   const updatedAt =

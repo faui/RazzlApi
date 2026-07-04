@@ -174,6 +174,20 @@ export async function markExternalProductsAbsentSince(
   return stale.length;
 }
 
+export async function markExternalProductDeletedByExternalId(
+  connectionId: number,
+  externalProductId: string
+): Promise<void> {
+  await commerceQuery(
+    `UPDATE ${COMMERCE_TABLES.externalProduct}
+     SET deleted_on_platform_at = NOW(), updated_on = NOW()
+     WHERE commerce_platform_connection_fk = ?
+       AND external_product_id = ?
+       AND deleted_on_platform_at IS NULL`,
+    [connectionId, externalProductId]
+  );
+}
+
 export async function findExternalProductByExternalId(
   connectionId: number,
   externalProductId: string

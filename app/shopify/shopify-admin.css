@@ -167,11 +167,25 @@
 }
 
 .shopify-cta-preview-panel {
-  border: 1px solid var(--p-color-border-secondary);
-  border-radius: var(--p-border-radius-300);
-  background: var(--p-color-bg-surface-secondary);
-  padding: var(--p-space-400);
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  background: #f6f6f7;
+  padding: 16px;
   min-height: 120px;
+}
+
+.shopify-connection-heading-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: #6d7175;
+}
+
+.shopify-connection-heading-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
 }
 
 .shopify-connection-panel {

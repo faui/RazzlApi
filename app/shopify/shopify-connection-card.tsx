@@ -7,7 +7,6 @@ import {
   BlockStack,
   Box,
   Card,
-  Icon,
   InlineGrid,
   InlineStack,
   Link,
@@ -69,7 +68,9 @@ export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) 
       <Box padding="400">
         <BlockStack gap="400">
           <InlineStack gap="200" blockAlign="center">
-            <Icon source={StoreIcon} tone="base" />
+            <span className="shopify-connection-heading-icon" aria-hidden="true">
+              <StoreIcon />
+            </span>
             <Text as="h2" variant="headingMd">
               Connection
             </Text>

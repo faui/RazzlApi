@@ -7,6 +7,7 @@ import {
 import { findConnectionByStoreDomain } from "@/lib/commerce/core/connections/platform-connection-repo";
 import {
   markExternalProductsAbsentSince,
+  markExternalProductDeletedByExternalId,
   upsertExternalProduct,
   upsertExternalVariants
 } from "@/lib/commerce/core/products/external-product-repo";
@@ -117,4 +118,27 @@ export async function getProductSyncStatus(shop: string): Promise<{
     latestRun,
     productCount: rows[0]?.total ?? 0
   };
+}
+
+export async function applyWebhookProductEvent(
+  connectionId: number,
+  event: { eventType: string; externalProductId?: string; payload: unknown }
+): Promise<void> {
+  const syncedAt = new Date();
+
+  if (event.eventType === "products/delete") {
+    if (event.externalProductId) {
+      await markExternalProductDeletedByExternalId(connectionId, event.externalProductId);
+    }
+    return;
+  }
+
+  const product = event.payload as NormalizedCommerceProduct;
+  if (!product?.externalProductId) {
+    throw new Error("Webhook product payload missing externalProductId");
+  }
+
+  const upsert = await upsertExternalProduct(connectionId, "shopify", product, syncedAt);
+  await upsertExternalVariants(connectionId, upsert.productPk, product, syncedAt);
+  await ensureMappingForExternalProduct(connectionId, upsert.productPk, product.externalProductId);
 }

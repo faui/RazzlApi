@@ -16,6 +16,10 @@ import {
   fetchShopifyProductById,
   fetchShopifyProductsPage
 } from "@/lib/commerce/adapters/shopify/products";
+import {
+  DEFAULT_SHOPIFY_WEBHOOK_TOPICS,
+  registerShopifyWebhooks
+} from "@/lib/commerce/adapters/shopify/webhook-register";
 
 function notImplemented(method: string): never {
   throw new CommerceAdapterError("NOT_IMPLEMENTED", `${method} is not implemented yet`);
@@ -47,8 +51,10 @@ export const shopifyAdapter: CommercePlatformAdapter = {
     return fetchShopifyProductById(input.context, input.externalProductId);
   },
 
-  async registerWebhooks() {
-    notImplemented("registerWebhooks");
+  async registerWebhooks(input) {
+    const callbackUrl = `${input.callbackBaseUrl.replace(/\/$/, "")}/api/commerce/shopify/webhooks`;
+    const topics = input.topics.length ? input.topics : [...DEFAULT_SHOPIFY_WEBHOOK_TOPICS];
+    return registerShopifyWebhooks(input.context, callbackUrl, topics);
   },
 
   async verifyWebhookSignature(input: VerifyWebhookSignatureInput): Promise<boolean> {

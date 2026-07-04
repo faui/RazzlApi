@@ -16,5 +16,13 @@ redirect_urls = [
 [webhooks]
 api_version = "2024-10"
 
+[[webhooks.subscriptions]]
+topics = [ "products/create", "products/update", "products/delete", "app/uninstalled" ]
+uri = "/api/commerce/shopify/webhooks"
+
+[[webhooks.subscriptions]]
+compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+uri = "/api/commerce/shopify/webhooks"
+
 [pos]
 embedded = false

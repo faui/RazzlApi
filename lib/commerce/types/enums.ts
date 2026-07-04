@@ -1,4 +1,4 @@
-/** Shared commerce column enums — see studio/docs/commerce/DATA-MODEL.md */
+/** Shared commerce column enums — see api/docs/commerce/DATA-MODEL.md */
 
 export type CommercePlatformType =
   | "shopify"

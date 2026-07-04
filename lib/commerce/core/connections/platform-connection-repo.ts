@@ -146,6 +146,19 @@ export async function unlinkConnectionTenant(connectionId: number): Promise<void
   );
 }
 
+export async function markShopUninstalled(connectionId: number): Promise<void> {
+  await commerceQuery(
+    `UPDATE ${COMMERCE_TABLES.platformConnection}
+     SET install_status = 'uninstalled',
+         uninstalled_at = NOW(),
+         access_token_encrypted = NULL,
+         refresh_token_encrypted = NULL,
+         updated_on = NOW()
+     WHERE commerce_platform_connection_pk = ?`,
+    [connectionId]
+  );
+}
+
 export async function findConnectionById(
   connectionId: number
 ): Promise<CommercePlatformConnectionRow | null> {

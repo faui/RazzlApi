@@ -1,14 +1,16 @@
 # AGENTS.md — Razzl API (api.razzl.com)
 
-## Required reading (Studio repo docs)
+## Required reading (commerce docs — this repo)
 
-Commerce source-of-truth lives in the **Studio** repository:
+Commerce documentation lives in **this repository**:
 
-1. [`../studio/docs/commerce/README.md`](../studio/docs/commerce/README.md)
-2. [`../studio/docs/commerce/API-REPO.md`](../studio/docs/commerce/API-REPO.md)
-3. [`../studio/docs/commerce/STUDIO-CONTRACT.md`](../studio/docs/commerce/STUDIO-CONTRACT.md)
-4. [`../studio/docs/commerce/IMPLEMENTATION-PLAN.md`](../studio/docs/commerce/IMPLEMENTATION-PLAN.md)
-5. [`../studio/CONTINUE-HERE.md`](../studio/CONTINUE-HERE.md) (schema slices)
+1. [`docs/commerce/README.md`](docs/commerce/README.md)
+2. [`docs/commerce/API-REPO.md`](docs/commerce/API-REPO.md)
+3. [`docs/commerce/STUDIO-CONTRACT.md`](docs/commerce/STUDIO-CONTRACT.md)
+4. [`docs/commerce/IMPLEMENTATION-PLAN.md`](docs/commerce/IMPLEMENTATION-PLAN.md)
+5. [`CONTINUE-HERE.md`](CONTINUE-HERE.md)
+
+Schema migrations remain in **Studio**: [`../studio/db/migrations/`](../studio/db/migrations/)
 
 ## This repo owns
 
@@ -17,6 +19,7 @@ Commerce source-of-truth lives in the **Studio** repository:
 - Shopify OAuth, webhooks, billing API
 - CTA resolver (`api.razzl.com`)
 - Shopify theme app extension
+- **Commerce documentation** (`docs/commerce/`)
 - CI/CD for API Fargate service (deploy workflow; shared infra in Studio terraform)
 
 ## Studio repo owns

@@ -9,6 +9,7 @@ import {
 import { getShopifyEnvConfig, normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
 import { upsertShopifyInstall } from "@/lib/commerce/core/connections/platform-connection-repo";
 import { encryptPlatformToken } from "@/lib/commerce/core/crypto/token-crypto";
+import { registerWebhooksForShop } from "@/lib/commerce/core/events/webhook-processor-service";
 import { traceLog } from "@/lib/logger";
 
 function queryParamsFromUrl(url: URL): Record<string, string> {
@@ -62,6 +63,15 @@ export async function GET(request: Request) {
       acquisitionSource: "direct",
       rawPlatformPayload: authResult.rawPayload
     });
+
+    try {
+      await registerWebhooksForShop(shopDomain);
+    } catch (registerError) {
+      traceLog(1, "shopify:webhooks:register_failed", {
+        shop: shopDomain,
+        error: registerError instanceof Error ? registerError.message : String(registerError)
+      });
+    }
 
     const redirectUrl = new URL("/shopify", config.publicOrigin);
     redirectUrl.searchParams.set("shop", shopDomain);
