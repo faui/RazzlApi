@@ -103,9 +103,13 @@ export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) 
                     <Text as="span" variant="bodySm" tone="subdued">
                       Install status
                     </Text>
-                    <Badge tone={status.installStatus === "connected" ? "success" : "info"}>
-                      {status.installStatus}
-                    </Badge>
+                    <InlineStack align="start">
+                      {status.installStatus === "connected" ? (
+                        <span className="shopify-connected-pill">{status.installStatus}</span>
+                      ) : (
+                        <Badge tone="info">{status.installStatus}</Badge>
+                      )}
+                    </InlineStack>
                   </BlockStack>
                   <BlockStack gap="100">
                     <Text as="span" variant="bodySm" tone="subdued">

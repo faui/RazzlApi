@@ -452,7 +452,7 @@ export function ShopifyProductsPanel({
             </Text>
           ) : (
             <Text as="span" tone="subdued" variant="bodySm">
-              No copilot mapped
+              —
             </Text>
           )}
         </IndexTable.Cell>
@@ -475,7 +475,7 @@ export function ShopifyProductsPanel({
             </InlineStack>
           ) : (
             <Text as="span" tone="subdued" variant="bodySm">
-              Map first
+              <span className="shopify-map-first-hint">Map first</span>
             </Text>
           )}
         </IndexTable.Cell>

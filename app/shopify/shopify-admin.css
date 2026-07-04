@@ -48,17 +48,88 @@
   transform: translateX(20px);
 }
 
-.shopify-outlined-badge {
+.shopify-outlined-badge,
+.shopify-unmapped-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border: 1px solid var(--p-color-border-secondary);
-  border-radius: var(--p-border-radius-full);
-  font-size: var(--p-font-size-275);
-  font-weight: var(--p-font-weight-medium);
-  line-height: var(--p-font-line-height-400);
-  color: var(--p-color-text-secondary);
-  background: var(--p-color-bg-surface);
+  width: fit-content;
+  max-width: fit-content;
+  border: 1.5px solid #c9cccf;
+  background: transparent;
+  color: #6d7175;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.shopify-connected-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: fit-content;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #aee9d1;
+  color: #0d3b2e;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.shopify-map-first-hint {
+  font-style: italic;
+}
+
+.shopify-storefront-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 22px;
+  border-radius: 8px;
+  background: #0a0a0a;
+  color: #ffffff;
+  border: 1.5px solid #0a0a0a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: default;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+}
+
+.shopify-storefront-cta-btn--link {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #0a0a0a;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.shopify-storefront-cta-btn--badge {
+  padding: 8px 16px;
+  background: transparent;
+  color: #0a0a0a;
+  border: 1.5px solid #c9cccf;
+  border-radius: 999px;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.shopify-storefront-cta-btn__icon {
+  display: inline-flex;
+  opacity: 0.9;
+}
+
+.shopify-theme-editor-link {
+  width: fit-content;
 }
 
 .shopify-onboarding-step {

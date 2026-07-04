@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Badge,
   Banner,
   BlockStack,
   Box,
@@ -15,7 +14,7 @@ import {
   SkeletonBodyText,
   Text
 } from "@shopify/polaris";
-import { CursorIcon } from "@shopify/polaris-icons";
+import { ChatIcon, ExternalIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useState } from "react";
 
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
@@ -50,7 +49,22 @@ const LABEL_OPTIONS = [
   "Product setup help"
 ];
 
-function CtaPreview({
+const CHAT_ICON_SVG = (
+  <svg
+    className="shopify-storefront-cta-btn__icon"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    aria-hidden="true"
+  >
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+function CtaStorefrontPreview({
   label,
   styleMode
 }: {
@@ -58,19 +72,18 @@ function CtaPreview({
   styleMode: CtaConfig["ctaStyleMode"];
 }) {
   if (styleMode === "link") {
-    return (
-      <Text as="span" variant="bodyMd">
-        <span style={{ textDecoration: "underline" }}>{label}</span>
-      </Text>
-    );
+    return <span className="shopify-storefront-cta-btn shopify-storefront-cta-btn--link">{label}</span>;
   }
 
   if (styleMode === "badge") {
-    return <Badge tone="info">{label}</Badge>;
+    return <span className="shopify-storefront-cta-btn shopify-storefront-cta-btn--badge">{label}</span>;
   }
 
   return (
-    <Button variant={styleMode === "button" ? "primary" : "secondary"}>{label}</Button>
+    <span className="shopify-storefront-cta-btn">
+      {CHAT_ICON_SVG}
+      {label}
+    </span>
   );
 }
 
@@ -169,7 +182,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
     <Card padding="0">
       <Box padding="400" background="bg-surface-secondary">
         <InlineStack gap="200" blockAlign="center">
-          <Icon source={CursorIcon} tone="base" />
+          <Icon source={ChatIcon} tone="base" />
           <BlockStack gap="100">
             <Text as="h2" variant="headingMd">
               Storefront CTA settings
@@ -205,11 +218,14 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                   />
                   <BlockStack gap="200">
                     <Text as="span" variant="bodySm" tone="subdued">
-                      Live preview
+                      Storefront appearance
                     </Text>
                     <div className="shopify-cta-preview-panel">
                       <BlockStack gap="200" inlineAlign="start">
-                        <CtaPreview label={config.ctaLabelDefault} styleMode={config.ctaStyleMode} />
+                        <CtaStorefrontPreview
+                          label={config.ctaLabelDefault}
+                          styleMode={config.ctaStyleMode}
+                        />
                         {config.showPoweredByRazzl ? (
                           <Text as="p" variant="bodySm" tone="subdued">
                             Powered by <strong>Razzl</strong>
@@ -288,9 +304,11 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                   ))}
                 </BlockStack>
                 {themeInstructions.deepLinkUrl ? (
-                  <Button url={themeInstructions.deepLinkUrl} external>
-                    Open theme editor
-                  </Button>
+                  <div className="shopify-theme-editor-link">
+                    <Button variant="plain" url={themeInstructions.deepLinkUrl} external icon={ExternalIcon}>
+                      Open theme editor
+                    </Button>
+                  </div>
                 ) : null}
               </BlockStack>
             </Box>

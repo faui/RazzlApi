@@ -37,6 +37,14 @@ type Props = {
   tenantLinked: boolean;
 };
 
+const ANALYTICS_EMPTY_ILLUSTRATION = `data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none">
+    <circle cx="40" cy="40" r="34" stroke="#8C9196" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <path fill="#8C9196" d="M44 24c1.1 0 2 .9 2 2v14.8l4.6-4.6 1.4 1.4-7 7-7-7 1.4-1.4 4.6 4.6V26c0-1.1.9-2 2-2h2z"/>
+    <path fill="#8C9196" d="M36 52h8v2h-8v-2z"/>
+  </svg>`
+)}`;
+
 function AnalyticsStatCard({
   label,
   value,
@@ -174,7 +182,7 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
           <Box padding="600" background="bg-surface-secondary" borderRadius="200">
             <EmptyState
               heading="No clicks yet"
-              image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+              image={ANALYTICS_EMPTY_ILLUSTRATION}
               fullWidth
             >
               <p>
