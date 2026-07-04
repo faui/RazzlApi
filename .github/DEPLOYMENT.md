@@ -18,6 +18,10 @@ Configure **GitHub Environments** named exactly `dev` and `prod` in this repo
 | `.github/workflows/deploy-api-dev.yml` | Build → ECR → ECS **dev** |
 | `.github/workflows/deploy-api-prod.yml` | Build → ECR → ECS **prod** (manual) |
 
+## Docker / npm note (Polaris + React 19)
+
+`@shopify/polaris@13` declares a React 18 peer dependency while this app uses React 19. Local and CI installs use `legacy-peer-deps` (see repo `.npmrc`). The **Dockerfile** copies `.npmrc` and runs `npm ci --legacy-peer-deps` so ECR builds match CI.
+
 ## Terraform outputs (source of truth)
 
 From the **Studio** repo:

@@ -18,9 +18,9 @@ Merge to `main` and deploy api-dev. **Team must refresh embedded app** — prior
 
 ## Exact next steps
 
-1. Deploy api-dev with Slice 9B + 9B.1
-2. Hard-refresh Shopify embedded app (or re-open from Admin → Apps)
-3. Validate products table: single ⋯ kebab per row, switch CTA, outlined Unmapped badge
+1. **Merge/deploy fix:** Dockerfile + CI use `npm ci --legacy-peer-deps` (Polaris vs React 19 peer conflict)
+2. Push to `main` — confirm `Deploy API to Dev` succeeds
+3. Hard-refresh Shopify embedded app on razzl-dev — validate 9B/9B.1 UI
 4. Start Slice 10 when UX sign-off received
 
 ## Files changed (Slice 9B.1)
