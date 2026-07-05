@@ -1,8 +1,11 @@
 "use client";
 
-import { Link, Text } from "@shopify/polaris";
+import { InlineStack, Link, Text } from "@shopify/polaris";
 
 import { RAZZL_MARKETING_URL } from "@/app/shopify/shopify-copilot-preview-video";
+
+const PRIVACY_POLICY_URL = "https://www.razzl.com/privacy-policy";
+const SUPPORT_EMAIL = "contact@razzl.com";
 
 export function ShopifyAppFooter() {
   return (
@@ -13,6 +16,12 @@ export function ShopifyAppFooter() {
           Razzl
         </Link>
       </Text>
+      <InlineStack gap="300" align="center">
+        <Link url={PRIVACY_POLICY_URL} target="_blank">
+          Privacy policy
+        </Link>
+        <Link url={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</Link>
+      </InlineStack>
     </footer>
   );
 }

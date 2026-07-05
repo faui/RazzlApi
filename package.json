@@ -9,8 +9,9 @@
     "start": "next start -p 8080",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "vitest run",
-    "test:commerce": "vitest run lib/commerce",
-    "test:commerce:shopify": "vitest run lib/commerce/adapters/shopify"
+  "test:commerce": "vitest run lib/commerce",
+  "test:commerce:shopify": "vitest run lib/commerce/adapters/shopify",
+  "test:slice10-smoke": "node scripts/slice-10-e2e-smoke.mjs"
   },
   "dependencies": {
     "@shopify/app-bridge": "^3.7.11",

@@ -1,0 +1,15 @@
+{
+  "app_subscription": {
+    "admin_graphql_api_id": "gid://shopify/AppSubscription/1029267004",
+    "name": "Razzl - Starter Plan",
+    "status": "ACTIVE",
+    "admin_graphql_api_shop_id": "gid://shopify/Shop/548380009",
+    "created_at": "2026-07-05T12:00:00-04:00",
+    "updated_at": "2026-07-05T12:05:00-04:00",
+    "currency": "USD",
+    "capped_amount": null,
+    "price": "12.00",
+    "interval": "every_30_days",
+    "plan_handle": "monthly_starter"
+  }
+}

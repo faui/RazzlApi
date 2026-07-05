@@ -2,66 +2,52 @@
 
 ## Current status
 
-**Slice 10 implemented** — Shopify Billing / App Pricing (`appSubscriptionCreate`, billing webhooks, entitlement projection, embedded billing UI, feature gating).
+**Slice 12 started** — App Store readiness checklist + listing docs. **Slice 10** code complete; api-dev smoke validated; webhook URI fix applied (re-deploy required).
 
 ## Current branch
 
-Merge to `main` and deploy api-dev. Re-run OAuth or `shopify app deploy` to register billing webhook subscriptions and scopes.
+Merge webhook URI fix + Slice 12 docs to `main`, deploy api-dev, run `shopify app deploy`, then complete manual billing E2E on dev store.
 
 ## Last completed slice
 
-**Slice 10** — Shopify billing adapter, `commerce_billing_account` writes, billing API routes, webhook handlers, map/sync/CTA gating, embedded billing panel
+**Slice 10** — Shopify billing (pending full manual E2E after webhook re-deploy)
 
 ## Next slice
 
-**Slice 12** — App Store readiness (or Slice 9 analytics enhancements per backlog)
+**Slice 12** — App Store submission prep (in progress)
 
 ## Exact next steps
 
-1. Push to `main` — confirm `Deploy API to Dev` succeeds
-2. `shopify app deploy` from `api/` (registers `app_subscriptions/update` webhook)
-3. Partner Dashboard: confirm app uses **manual pricing** (not managed) and **public distribution** for Billing API on dev stores
-4. Dev store E2E: link tenant → Billing panel → approve plan → map product → verify `tenant_subscription` row
-5. Trigger `app_subscriptions/update` webhook; confirm idempotency + entitlement projection
+1. Merge + deploy api-dev
+2. **`shopify app deploy`** — registers absolute webhook URLs (critical fix)
+3. Run `npm run test:slice10-smoke -- YOUR-STORE.myshopify.com`
+4. Manual: approve test plan → verify SQL in [`SLICE-10-E2E-VALIDATION.md`](docs/commerce/SLICE-10-E2E-VALIDATION.md)
+5. Work [`APP-STORE-READINESS.md`](docs/commerce/APP-STORE-READINESS.md) checklist — screenshots, demo store, listing form
 
-## Files changed (Slice 10)
+## Slice 10 validation status
 
-| Path | Purpose |
-|------|---------|
-| `lib/commerce/adapters/shopify/billing.ts` | `appSubscriptionCreate`, billing status GraphQL |
-| `lib/commerce/adapters/shopify/graphql-client.ts` | Admin GraphQL helper |
-| `lib/commerce/core/billing/billing-service.ts` | Lane resolution, session creation, webhook apply |
-| `lib/commerce/core/billing/billing-account-repo.ts` | `commerce_billing_account` CRUD |
-| `lib/commerce/core/billing/subscription-tier-catalog.ts` | Plan parity from `master_subscription_tier` |
-| `lib/commerce/core/billing/tenant-subscription-projection.ts` | Entitlement projection (reuse `tenant_subscription`) |
-| `app/api/commerce/billing/status/route.ts` | Billing status + plans |
-| `app/api/commerce/billing/session/route.ts` | Create Shopify billing session |
-| `app/shopify/shopify-billing-panel.tsx` | Embedded billing UI |
-| `lib/commerce/core/events/webhook-processor-service.ts` | `app_subscriptions/*` + uninstall billing cleanup |
-| `lib/commerce/adapters/shopify/webhooks.ts` | Billing webhook normalization |
-| `shopify.app.toml` | Billing webhook topics |
-| `docs/commerce/SLICE-10-DEVIATIONS.md` | Guideline deviations |
+| Check | Status |
+|-------|--------|
+| api-dev deployed (CI run 28752759266) | ✅ |
+| Lint + tests (52) | ✅ |
+| Smoke script (infra) | ✅ |
+| Webhook URL fix in `shopify.app.toml` | ✅ (needs deploy) |
+| Dev store billing approval E2E | ⬜ Manual |
+| `app_subscriptions/update` → DB | ⬜ After re-deploy |
 
-## Studio companion (billing_source routing)
+See [`docs/commerce/SLICE-10-E2E-VALIDATION.md`](docs/commerce/SLICE-10-E2E-VALIDATION.md).
+
+## Slice 12 deliverables (started)
 
 | Path | Purpose |
 |------|---------|
-| `lib/commerce-billing-lane.ts` | Detect `shopify_billing` lane |
-| `app/api/tenant/commerce-billing-lane/route.ts` | API for Studio UI |
-| `app/app/billing/page.tsx` | Suppress Stripe portal when Shopify-billed |
-| `app/app/subscription/page.tsx` | Suppress Stripe checkout/portal when Shopify-billed |
-
-## Validation status
-
-- [ ] api-dev deployed with Slice 10
-- [ ] Dev store approves test plan (`SHOPIFY_BILLING_TEST=true`)
-- [ ] `app_subscriptions/update` updates `commerce_billing_account` + `tenant_subscription`
-- [ ] Map/sync/CTA gated until billing active (Shopify lane)
-- [ ] Stripe lane unchanged for direct customers
-- [ ] Lint + tests pass locally
+| `docs/commerce/APP-STORE-READINESS.md` | Submission checklist + listing copy draft |
+| `docs/commerce/SLICE-10-E2E-VALIDATION.md` | E2E validation report + SQL |
+| `scripts/slice-10-e2e-smoke.mjs` | api-dev smoke (optional shop arg) |
+| `app/shopify/shopify-app-footer.tsx` | Privacy + support links |
 
 ## Recommended next Composer prompt
 
 ```text
-Validate Slice 10 E2E on api-dev dev store per CONTINUE-HERE.md. Then start Slice 12 App Store readiness checklist.
+Capture App Store screenshots from dev store demo. Complete APP-STORE-READINESS.md demo store section. Create shopify.app.prod.toml for production deploy.
 ```

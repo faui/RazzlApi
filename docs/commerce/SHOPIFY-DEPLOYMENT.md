@@ -126,6 +126,8 @@ Use a **separate Shopify app** (or a new app version) for production — do not 
 
 Before App Store submission you will also need privacy policy URL, compliance webhooks (Slice 11), and billing configuration (Slice 10).
 
+**Webhook URIs in `shopify.app.toml` must be absolute HTTPS URLs** (e.g. `https://api-dev.razzl.com/api/commerce/shopify/webhooks`). Relative paths resolve under `application_url` (`/shopify`) and return 404. See [`SLICE-10-E2E-VALIDATION.md`](./SLICE-10-E2E-VALIDATION.md).
+
 ### 2. AWS Secrets Manager — prod
 
 Create `prod/shopify/razzl_api` with production Client ID, Client secret, and a **new** `token_encryption_key` (do not copy dev key — encrypted tokens are environment-specific).

@@ -590,6 +590,8 @@ Implement Slice 11: Shopify webhooks and compliance per SECURITY-COMPLIANCE.md. 
 Implement Slice 12: App Store readiness checklist per SHOPIFY-SPEC.md and SECURITY-COMPLIANCE.md. Demo store, listing assets, policy links. Update CONTINUE-HERE.md.
 ```
 
+**Status:** 🟡 In progress — [`APP-STORE-READINESS.md`](./APP-STORE-READINESS.md), footer policy links, E2E validation doc. Pending: screenshots, demo store, prod TOML, manual billing E2E.
+
 ---
 
 ## Slice 13: Future adapter readiness

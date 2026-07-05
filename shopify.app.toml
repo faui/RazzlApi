@@ -24,11 +24,12 @@ topics = [
   "app/uninstalled",
   "app_subscriptions/update"
 ]
-uri = "/api/commerce/shopify/webhooks"
+# Absolute HTTPS URL required — relative paths resolve under application_url (/shopify) and 404.
+uri = "https://api-dev.razzl.com/api/commerce/shopify/webhooks"
 
 [[webhooks.subscriptions]]
 compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
-uri = "/api/commerce/shopify/webhooks"
+uri = "https://api-dev.razzl.com/api/commerce/shopify/webhooks"
 
 [pos]
 embedded = false
