@@ -255,7 +255,7 @@ export type ShopifyAppSubscriptionWebhookPayload = {
 
 export async function applyShopifySubscriptionWebhook(
   shopDomain: string,
-  topic: "app_subscriptions/update" | "app_subscriptions/cancelled",
+  topic: "app_subscriptions/update",
   payload: ShopifyAppSubscriptionWebhookPayload
 ): Promise<void> {
   const { findConnectionByStoreDomain } = await import(
@@ -270,7 +270,7 @@ export async function applyShopifySubscriptionWebhook(
   const tenantPk = connection.tenant_fk;
   const subscriptionId = payload.admin_graphql_api_id ?? null;
   const platformStatus = mapShopifyStatusToPlatformStatus(payload.status);
-  const cancelled = topic === "app_subscriptions/cancelled" || platformStatus === "cancelled";
+  const cancelled = platformStatus === "cancelled";
 
   const tier = await resolveTierFromShopifyPlanName(
     payload.name ?? "",

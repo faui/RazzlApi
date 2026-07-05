@@ -175,7 +175,7 @@ async function dispatchWebhookEvent(
     const subscriptionPayload = envelope.app_subscription ?? {};
     await applyShopifySubscriptionWebhook(
       shopDomain,
-      event.eventType as "app_subscriptions/update" | "app_subscriptions/cancelled",
+      "app_subscriptions/update",
       subscriptionPayload as Parameters<typeof applyShopifySubscriptionWebhook>[2]
     );
     return "processed";

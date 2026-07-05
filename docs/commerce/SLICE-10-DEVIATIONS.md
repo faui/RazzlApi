@@ -44,6 +44,11 @@ This slice follows [`IMPLEMENTATION-PLAN.md`](./IMPLEMENTATION-PLAN.md) and [`DA
 
 - Gates on **map**, **sync**, and **CTA enable** (SHOPIFY-SPEC), not only map-first — map-first remains the primary paywall UX trigger.
 
+## Webhook topics
+
+- Guideline listed **`app_subscriptions/cancelled`** — **not a valid Shopify topic**. Only **`app_subscriptions/update`** exists; cancellations arrive with `status: CANCELLED` on that topic.
+- **Uninstall** does not reliably fire subscription update webhooks; use **`app/uninstalled`** + **`markBillingCancelledOnUninstall`** for cleanup (Shopify platform behavior).
+
 ## Studio
 
 - Minimal change: **`app/app/billing/page.tsx`** and **`app/app/subscription/page.tsx`** suppress Stripe portal/checkout when **`commerce_billing_account.billing_source = shopify_billing`**.

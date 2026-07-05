@@ -38,10 +38,8 @@ export const SHOPIFY_COMPLIANCE_WEBHOOK_TOPICS = new Set([
   "shop/redact"
 ]);
 
-export const SHOPIFY_BILLING_WEBHOOK_TOPICS = new Set([
-  "app_subscriptions/update",
-  "app_subscriptions/cancelled"
-]);
+/** Shopify has no separate cancelled topic — CANCELLED status arrives on update. */
+export const SHOPIFY_BILLING_WEBHOOK_TOPICS = new Set(["app_subscriptions/update"]);
 
 function buildIdempotencyKey(topic: string, payload: ShopifyRestProduct): string {
   const productId = String(payload.id);

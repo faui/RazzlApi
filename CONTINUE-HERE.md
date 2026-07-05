@@ -19,7 +19,7 @@ Merge to `main` and deploy api-dev. Re-run OAuth or `shopify app deploy` to regi
 ## Exact next steps
 
 1. Push to `main` — confirm `Deploy API to Dev` succeeds
-2. `shopify app deploy` from `api/` (registers `app_subscriptions/*` webhooks)
+2. `shopify app deploy` from `api/` (registers `app_subscriptions/update` webhook)
 3. Partner Dashboard: confirm app uses **manual pricing** (not managed) and **public distribution** for Billing API on dev stores
 4. Dev store E2E: link tenant → Billing panel → approve plan → map product → verify `tenant_subscription` row
 5. Trigger `app_subscriptions/update` webhook; confirm idempotency + entitlement projection

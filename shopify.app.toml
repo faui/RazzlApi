@@ -22,8 +22,7 @@ topics = [
   "products/update",
   "products/delete",
   "app/uninstalled",
-  "app_subscriptions/update",
-  "app_subscriptions/cancelled"
+  "app_subscriptions/update"
 ]
 uri = "/api/commerce/shopify/webhooks"
 

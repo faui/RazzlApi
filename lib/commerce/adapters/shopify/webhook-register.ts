@@ -10,7 +10,6 @@ export const DEFAULT_SHOPIFY_WEBHOOK_TOPICS = [
   "products/delete",
   "app/uninstalled",
   "app_subscriptions/update",
-  "app_subscriptions/cancelled",
   "customers/data_request",
   "customers/redact",
   "shop/redact"
