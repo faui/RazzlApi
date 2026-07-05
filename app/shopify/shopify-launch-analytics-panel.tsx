@@ -42,7 +42,10 @@ const ANALYTICS_EMPTY_ILLUSTRATION = `data:image/svg+xml,${encodeURIComponent(
     <circle cx="40" cy="40" r="34" stroke="#8C9196" stroke-width="1.5" stroke-dasharray="5 4"/>
     <g transform="translate(24 24)">
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-        <path d="M11.5 14V8.5a1.5 1.5 0 1 1 3 0V14M14.5 14V7.5a1.5 1.5 0 1 1 3 0V14M17.5 14v-2a1.5 1.5 0 1 1 3 0v5.5a5.5 5.5 0 0 1-5.5 5.5h-1.5a4.5 4.5 0 0 1-4.5-4.5V14M11.5 14H9a1.5 1.5 0 0 0-1.5 1.5v1A1.5 1.5 0 0 0 9 18h.5" stroke="#8C9196" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="4" y1="28" x2="28" y2="28" stroke="#8C9196" stroke-width="1.5" stroke-linecap="round"/>
+        <rect x="6" y="18" width="5" height="10" rx="1" stroke="#8C9196" stroke-width="1.5"/>
+        <rect x="13.5" y="12" width="5" height="16" rx="1" stroke="#8C9196" stroke-width="1.5"/>
+        <rect x="21" y="16" width="5" height="12" rx="1" stroke="#8C9196" stroke-width="1.5"/>
       </svg>
     </g>
   </svg>`
@@ -81,25 +84,43 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
   const showToast = useCommerceToast();
   const [totals, setTotals] = useState<LaunchTotals | null>(null);
   const [products, setProducts] = useState<ProductLaunchRow[]>([]);
+  const [themeEditorUrl, setThemeEditorUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(tenantLinked);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   const fetchAnalytics = useCallback(async () => {
-    const response = await fetch(
-      `${apiPublicOrigin}/api/commerce/analytics/launches?shop=${encodeURIComponent(shop)}`
-    );
-    const data = (await response.json()) as {
+    const [analyticsResponse, ctaResponse] = await Promise.all([
+      fetch(`${apiPublicOrigin}/api/commerce/analytics/launches?shop=${encodeURIComponent(shop)}`),
+      fetch(`${apiPublicOrigin}/api/commerce/cta/config?shop=${encodeURIComponent(shop)}`)
+    ]);
+
+    const data = (await analyticsResponse.json()) as {
       ok: boolean;
       totals?: LaunchTotals;
       products?: ProductLaunchRow[];
       error?: string;
     };
-    if (!response.ok || !data.ok) {
+    if (!analyticsResponse.ok || !data.ok) {
       throw new Error(data.error ?? "Unable to load launch analytics");
     }
+
+    let themeEditorUrl: string | null = null;
+    try {
+      const ctaData = (await ctaResponse.json()) as {
+        ok: boolean;
+        themeInstructions?: { deepLinkUrl?: string | null };
+      };
+      if (ctaResponse.ok && ctaData.ok) {
+        themeEditorUrl = ctaData.themeInstructions?.deepLinkUrl ?? null;
+      }
+    } catch {
+      themeEditorUrl = null;
+    }
+
     return {
       totals: data.totals ?? { totalClicks: 0, clicksLast7Days: 0, clicksLast30Days: 0 },
-      products: data.products ?? []
+      products: data.products ?? [],
+      themeEditorUrl
     };
   }, [apiPublicOrigin, shop]);
 
@@ -115,6 +136,7 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
         if (cancelled) return;
         setTotals(result.totals);
         setProducts(result.products);
+        setThemeEditorUrl(result.themeEditorUrl);
       } catch (error) {
         if (!cancelled) {
           setErrorBanner(error instanceof Error ? error.message : "Unable to load launch analytics");
@@ -137,6 +159,7 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
       const result = await fetchAnalytics();
       setTotals(result.totals);
       setProducts(result.products);
+      setThemeEditorUrl(result.themeEditorUrl);
       showToast("Analytics refreshed");
     } catch (error) {
       setErrorBanner(error instanceof Error ? error.message : "Refresh failed");
@@ -162,7 +185,9 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
               CTA clicks from your storefront product pages.
             </Text>
           </BlockStack>
-          <Button icon={RefreshIcon} onClick={() => void handleRefresh()} loading={loading} accessibilityLabel="Refresh analytics" />
+          <Button icon={RefreshIcon} onClick={() => void handleRefresh()} loading={loading}>
+            Refresh
+          </Button>
         </InlineStack>
 
         {errorBanner ? (
@@ -187,9 +212,19 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
               heading="No clicks yet"
               image={ANALYTICS_EMPTY_ILLUSTRATION}
               fullWidth
+              action={
+                themeEditorUrl
+                  ? {
+                      content: "Verify your theme block is added →",
+                      url: themeEditorUrl,
+                      external: true
+                    }
+                  : undefined
+              }
             >
               <p>
-                Enable the storefront CTA on a mapped product to start tracking setup help usage.
+                Enable the storefront CTA on a mapped product, then confirm the Razzl theme block is
+                on your product page template.
               </p>
             </EmptyState>
           </Box>

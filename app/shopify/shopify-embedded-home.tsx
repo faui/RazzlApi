@@ -36,14 +36,20 @@ export function ShopifyEmbeddedHome({
       ? {
           content: "Add Copilot",
           url: createCopilotUrl,
-          external: true
+          external: true,
+          helpText: "Create from PDF or template"
         }
       : undefined;
+
+  const pageSubtitle =
+    createCopilotUrl && status?.tenantLinked
+      ? "Add AI setup help to your product pages. Add Copilot opens Studio — create from PDF or template."
+      : "Add AI setup help to your product pages.";
 
   return (
     <Page
       title="Razzl Product Setup Copilot"
-      subtitle="Add AI setup help to your product pages."
+      subtitle={pageSubtitle}
       primaryAction={primaryAction}
       fullWidth
     >

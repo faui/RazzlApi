@@ -17,11 +17,13 @@ import {
   SkeletonBodyText,
   Text,
   TextField,
-  Thumbnail
+  Thumbnail,
+  Tooltip
 } from "@shopify/polaris";
 import {
   ClockIcon,
   MenuHorizontalIcon,
+  QuestionCircleIcon,
   SearchIcon
 } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -474,9 +476,16 @@ export function ShopifyProductsPanel({
               </Text>
             </InlineStack>
           ) : (
-            <Text as="span" tone="subdued" variant="bodySm">
-              <span className="shopify-map-first-hint">Map first</span>
-            </Text>
+            <InlineStack gap="100" blockAlign="center" wrap={false}>
+              <Text as="span" tone="subdued" variant="bodySm">
+                <span className="shopify-map-first-hint">Map first</span>
+              </Text>
+              <Tooltip content="Map a copilot to this product before you can enable the storefront CTA.">
+                <button type="button" className="shopify-map-first-info" aria-label="Why is storefront CTA disabled?">
+                  <QuestionCircleIcon />
+                </button>
+              </Tooltip>
+            </InlineStack>
           )}
         </IndexTable.Cell>
         <IndexTable.Cell>
@@ -622,6 +631,11 @@ export function ShopifyProductsPanel({
           >
             {rowMarkup}
           </IndexTable>
+          <div className="shopify-index-table-footer">
+            <Text as="p" variant="bodySm" tone="subdued">
+              Showing {filteredProducts.length} of {products.length} products · {mappedCount} mapped
+            </Text>
+          </div>
           </div>
         )}
       </Card>

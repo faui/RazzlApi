@@ -10,14 +10,16 @@ export function StatusBadge({ label, variant = "unmapped" }: Props) {
     return <span className="shopify-unmapped-badge">{label}</span>;
   }
 
+  if (variant === "published") {
+    return <span className="shopify-published-badge">{label}</span>;
+  }
+
   const tone =
-    variant === "published"
-      ? "success"
-      : variant === "processing"
-        ? "info"
-        : variant === "error"
-          ? "critical"
-          : "warning";
+    variant === "processing"
+      ? "info"
+      : variant === "error"
+        ? "critical"
+        : "warning";
 
   return <Badge tone={tone}>{label}</Badge>;
 }

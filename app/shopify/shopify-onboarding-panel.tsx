@@ -52,7 +52,7 @@ export function ShopifyOnboardingPanel({
   productStats
 }: Props) {
   const showToast = useCommerceToast();
-  const [showChecklistDetails, setShowChecklistDetails] = useState(true);
+  const [showChecklistDetails, setShowChecklistDetails] = useState<boolean | null>(null);
 
   const steps: Step[] = useMemo(
     () => [
@@ -87,7 +87,7 @@ export function ShopifyOnboardingPanel({
   const completedCount = steps.filter((step) => step.complete).length;
   const allComplete = completedCount === steps.length;
   const progress = Math.round((completedCount / steps.length) * 100);
-  const checklistOpen = !allComplete || showChecklistDetails;
+  const checklistOpen = allComplete ? (showChecklistDetails ?? false) : true;
 
   const openStudioLink = useCallback(
     async (mode: "login" | "signup") => {
@@ -107,7 +107,7 @@ export function ShopifyOnboardingPanel({
     [apiPublicOrigin, shop, showToast]
   );
 
-  if (allComplete && !showChecklistDetails) {
+  if (allComplete && showChecklistDetails !== true) {
     return (
       <Card>
         <InlineStack align="space-between" blockAlign="center">

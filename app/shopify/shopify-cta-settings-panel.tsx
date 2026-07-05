@@ -18,6 +18,7 @@ import { ChatIcon, ExternalIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useState } from "react";
 
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
+import { ShopifyCopilotPreviewVideo } from "@/app/shopify/shopify-copilot-preview-video";
 import { ShopifySwitch } from "@/app/shopify/shopify-switch";
 
 type CtaConfig = {
@@ -48,44 +49,6 @@ const LABEL_OPTIONS = [
   "Ask setup copilot",
   "Product setup help"
 ];
-
-const CHAT_ICON_SVG = (
-  <svg
-    className="shopify-storefront-cta-btn__icon"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    aria-hidden="true"
-  >
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-);
-
-function CtaStorefrontPreview({
-  label,
-  styleMode
-}: {
-  label: string;
-  styleMode: CtaConfig["ctaStyleMode"];
-}) {
-  if (styleMode === "link") {
-    return <span className="shopify-storefront-cta-btn shopify-storefront-cta-btn--link">{label}</span>;
-  }
-
-  if (styleMode === "badge") {
-    return <span className="shopify-storefront-cta-btn shopify-storefront-cta-btn--badge">{label}</span>;
-  }
-
-  return (
-    <span className="shopify-storefront-cta-btn">
-      {CHAT_ICON_SVG}
-      {label}
-    </span>
-  );
-}
 
 export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }: Props) {
   const showToast = useCommerceToast();
@@ -222,10 +185,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                     </Text>
                     <div className="shopify-cta-preview-panel">
                       <BlockStack gap="200" inlineAlign="start">
-                        <CtaStorefrontPreview
-                          label={config.ctaLabelDefault}
-                          styleMode={config.ctaStyleMode}
-                        />
+                        <ShopifyCopilotPreviewVideo variant="compact" />
                         {config.showPoweredByRazzl ? (
                           <Text as="p" variant="bodySm" tone="subdued">
                             Powered by <strong>Razzl</strong>
