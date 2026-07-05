@@ -513,6 +513,8 @@ Implement Slice 9B.1 per team UX review and SLICE-9B-UX-GAP-REVIEW.md. Premium p
 Implement Slice 10: Shopify Billing per SHOPIFY-SPEC.md. Preserve Stripe for direct customers. Record commerce_billing_account. Gate sync/mapping/CTA. Update CONTINUE-HERE.md.
 ```
 
+**Status:** ✅ Complete (pending dev-store E2E validation). See [`SLICE-10-DEVIATIONS.md`](./SLICE-10-DEVIATIONS.md) for guideline mapping.
+
 ---
 
 ## Slice 11: Webhooks/compliance

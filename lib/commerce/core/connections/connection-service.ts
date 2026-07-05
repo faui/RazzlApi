@@ -13,6 +13,7 @@ import {
   buildStudioCommerceLinkReturnPath,
   buildStudioDashboardUrl
 } from "@/lib/commerce/core/studio-links";
+import { initializeBillingOnTenantLink } from "@/lib/commerce/core/billing/billing-service";
 
 export class CommerceConnectionError extends Error {
   constructor(
@@ -83,6 +84,7 @@ export async function completeTenantLink(
 
   try {
     await linkConnectionToTenant(payload.connectionId, tenantPk);
+    await initializeBillingOnTenantLink(connection, tenantPk);
   } catch (error) {
     if (error instanceof Error && error.message === "CONNECTION_ALREADY_LINKED") {
       throw new CommerceConnectionError(

@@ -15,6 +15,7 @@ import {
   buildStudioCreateCopilotUrl,
   buildStudioDashboardUrl
 } from "@/lib/commerce/core/studio-links";
+import { assertCommerceFeatureEntitlement } from "@/lib/commerce/core/billing/billing-service";
 
 export { buildStudioDashboardUrl } from "@/lib/commerce/core/studio-links";
 
@@ -121,6 +122,8 @@ export async function mapExternalProductToRazzlProduct(
     throw new CommerceMappingError("TENANT_NOT_LINKED", "Tenant is not linked");
   }
 
+  await assertCommerceFeatureEntitlement(connection, tenantPk, "map");
+
   const product = await loadTenantProduct(tenantPk, productPk);
   if (!product) {
     throw new CommerceMappingError("PRODUCT_NOT_FOUND", "Razzl product not found for this tenant");
@@ -193,6 +196,11 @@ export async function toggleExternalProductCta(
   }
   if (mapping.product_status_snapshot !== "active" && enabled) {
     throw new CommerceMappingError("NOT_LAUNCHABLE", "Copilot must be published before enabling CTA");
+  }
+
+  const tenantPk = connection.tenant_fk;
+  if (tenantPk) {
+    await assertCommerceFeatureEntitlement(connection, tenantPk, "cta");
   }
 
   await setStorefrontCtaEnabled(connection.commerce_platform_connection_pk, externalProductId, enabled);

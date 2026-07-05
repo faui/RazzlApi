@@ -17,7 +17,14 @@ redirect_urls = [
 api_version = "2024-10"
 
 [[webhooks.subscriptions]]
-topics = [ "products/create", "products/update", "products/delete", "app/uninstalled" ]
+topics = [
+  "products/create",
+  "products/update",
+  "products/delete",
+  "app/uninstalled",
+  "app_subscriptions/update",
+  "app_subscriptions/cancelled"
+]
 uri = "/api/commerce/shopify/webhooks"
 
 [[webhooks.subscriptions]]

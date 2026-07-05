@@ -38,6 +38,11 @@ export const SHOPIFY_COMPLIANCE_WEBHOOK_TOPICS = new Set([
   "shop/redact"
 ]);
 
+export const SHOPIFY_BILLING_WEBHOOK_TOPICS = new Set([
+  "app_subscriptions/update",
+  "app_subscriptions/cancelled"
+]);
+
 function buildIdempotencyKey(topic: string, payload: ShopifyRestProduct): string {
   const productId = String(payload.id);
   const updatedAt =
@@ -74,6 +79,20 @@ export function normalizeShopifyWebhook(
       eventType: topic,
       externalEventId: null,
       idempotencyKey: `shopify:${topic}:${rawBody.length}`,
+      payload
+    };
+  }
+
+  if (SHOPIFY_BILLING_WEBHOOK_TOPICS.has(topic)) {
+    const subscriptionPayload = payload as {
+      app_subscription?: { admin_graphql_api_id?: string; updated_at?: string };
+    };
+    const subscriptionId = subscriptionPayload.app_subscription?.admin_graphql_api_id ?? "unknown";
+    const updatedAt = subscriptionPayload.app_subscription?.updated_at ?? rawBody.length;
+    return {
+      eventType: topic,
+      externalEventId: subscriptionId,
+      idempotencyKey: `shopify:${topic}:${subscriptionId}:${updatedAt}`,
       payload
     };
   }

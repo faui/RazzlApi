@@ -6,9 +6,14 @@ import {
 } from "@/lib/commerce/adapters/shopify/webhook-register";
 import {
   SHOPIFY_COMPLIANCE_WEBHOOK_TOPICS,
+  SHOPIFY_BILLING_WEBHOOK_TOPICS,
   SHOPIFY_PRODUCT_WEBHOOK_TOPICS
 } from "@/lib/commerce/adapters/shopify/webhooks";
 import { getShopifyEnvConfig } from "@/lib/commerce/config/shopify-env";
+import {
+  applyShopifySubscriptionWebhook,
+  markBillingCancelledOnUninstall
+} from "@/lib/commerce/core/billing/billing-service";
 import { buildAdapterContextFromConnection } from "@/lib/commerce/core/connections/adapter-context";
 import {
   findConnectionByStoreDomain,
@@ -121,8 +126,10 @@ export async function processShopifyWebhook(
 
   try {
     const status = await dispatchWebhookEvent(
+      input.shopDomain,
       connection?.commerce_platform_connection_pk ?? null,
       connection?.install_status ?? null,
+      rawPayload,
       normalized
     );
     await updatePlatformEventStatus(eventPk, status);
@@ -142,8 +149,10 @@ export class WebhookVerificationError extends Error {
 }
 
 async function dispatchWebhookEvent(
+  shopDomain: string,
   connectionId: number | null,
   installStatus: string | null,
+  rawPayload: unknown,
   event: NormalizedCommerceEvent
 ): Promise<"processed" | "ignored"> {
   if (SHOPIFY_COMPLIANCE_WEBHOOK_TOPICS.has(event.eventType)) {
@@ -153,7 +162,22 @@ async function dispatchWebhookEvent(
   if (event.eventType === "app/uninstalled") {
     if (connectionId) {
       await markShopUninstalled(connectionId);
+      await markBillingCancelledOnUninstall(connectionId);
     }
+    return "processed";
+  }
+
+  if (SHOPIFY_BILLING_WEBHOOK_TOPICS.has(event.eventType)) {
+    const envelope =
+      typeof rawPayload === "object" && rawPayload !== null
+        ? (rawPayload as { app_subscription?: Record<string, unknown> })
+        : {};
+    const subscriptionPayload = envelope.app_subscription ?? {};
+    await applyShopifySubscriptionWebhook(
+      shopDomain,
+      event.eventType as "app_subscriptions/update" | "app_subscriptions/cancelled",
+      subscriptionPayload as Parameters<typeof applyShopifySubscriptionWebhook>[2]
+    );
     return "processed";
   }
 

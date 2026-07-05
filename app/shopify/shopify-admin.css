@@ -232,8 +232,68 @@
 
 .shopify-copilot-preview-video--full {
   width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
+}
+
+.shopify-copilot-preview-video-link {
+  display: block;
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+.shopify-copilot-preview-video--interactive {
+  position: relative;
+  cursor: pointer;
+}
+
+.shopify-copilot-preview-video--interactive video {
+  pointer-events: none;
+}
+
+.shopify-copilot-preview-video__hover-pill {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.shopify-copilot-preview-video-link:hover .shopify-copilot-preview-video__hover-pill,
+.shopify-copilot-preview-video-link:focus-visible .shopify-copilot-preview-video__hover-pill {
+  opacity: 1;
+}
+
+.shopify-copilot-preview-video__experience-link {
+  display: block;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.shopify-copilot-preview-video__experience-link:hover {
+  text-decoration: underline;
+}
+
+.shopify-brand-primary-link {
+  color: #0a0a0a;
+}
+
+.shopify-app-footer {
+  padding: var(--p-space-400) 0 var(--p-space-200);
+  margin-top: var(--p-space-200);
 }
 
 .shopify-copilot-preview-video--compact {

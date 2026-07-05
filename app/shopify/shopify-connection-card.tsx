@@ -13,6 +13,8 @@ import {
   Text
 } from "@shopify/polaris";
 import { StoreIcon } from "@shopify/polaris-icons";
+
+import { RAZZL_MARKETING_URL } from "@/app/shopify/shopify-copilot-preview-video";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 
 type Props = {
@@ -126,13 +128,22 @@ export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) 
           </div>
 
           {linked ? (
-            <Text as="p" variant="bodySm" tone="subdued">
-              To disconnect, manage your store in{" "}
-              <Link url="https://studio.razzl.com/app/profile" target="_blank">
-                Razzl Studio
-              </Link>
-              .
-            </Text>
+            <BlockStack gap="100">
+              <Text as="p" variant="bodySm" tone="subdued">
+                To disconnect, manage your store in{" "}
+                <Link url="https://studio.razzl.com/app/profile" target="_blank">
+                  Razzl Studio
+                </Link>
+                .
+              </Text>
+              <Text as="p" variant="bodySm" tone="subdued">
+                Learn more about Razzl at{" "}
+                <Link url={RAZZL_MARKETING_URL} target="_blank">
+                  razzl.com
+                </Link>
+                .
+              </Text>
+            </BlockStack>
           ) : null}
         </BlockStack>
       </Box>

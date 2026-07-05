@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       storeDisplayName: authResult.storeDisplayName ?? null,
       accessTokenEncrypted,
       scopes: authResult.scopes,
-      acquisitionSource: "direct",
+      acquisitionSource: "shopify_app_store",
       rawPlatformPayload: authResult.rawPayload
     });
 

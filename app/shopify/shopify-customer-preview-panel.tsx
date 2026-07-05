@@ -2,7 +2,7 @@
 
 import { BlockStack, Card, Text } from "@shopify/polaris";
 
-import { ShopifyCopilotPreviewVideo } from "@/app/shopify/shopify-copilot-preview-video";
+import { ShopifyCopilotPreviewVideoInteractive } from "@/app/shopify/shopify-copilot-preview-video";
 
 export function ShopifyCustomerPreviewPanel() {
   return (
@@ -17,7 +17,7 @@ export function ShopifyCustomerPreviewPanel() {
           </Text>
         </BlockStack>
 
-        <ShopifyCopilotPreviewVideo variant="full" />
+        <ShopifyCopilotPreviewVideoInteractive />
 
         <Text as="p" variant="bodyMd" tone="subdued" alignment="center">
           This is the guided setup experience your customers get — no support tickets, no confusion.

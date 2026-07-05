@@ -336,10 +336,18 @@ export function ShopifyProductsPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shop, externalProductId, productPk })
     });
-    const data = (await response.json()) as { ok: boolean; error?: string };
+    const data = (await response.json()) as {
+      ok: boolean;
+      error?: string;
+      code?: string;
+    };
     if (!response.ok || !data.ok) {
-      setErrorBanner(data.error ?? "Mapping failed");
-      showToast(data.error ?? "Mapping failed", { isError: true });
+      const message =
+        data.code === "BILLING_REQUIRED"
+          ? "Approve a Shopify plan in the Billing section before mapping."
+          : (data.error ?? "Mapping failed");
+      setErrorBanner(message);
+      showToast(message, { isError: true });
       return false;
     }
     setMappingModal(null);

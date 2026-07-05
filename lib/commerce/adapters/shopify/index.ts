@@ -17,6 +17,11 @@ import {
   fetchShopifyProductsPage
 } from "@/lib/commerce/adapters/shopify/products";
 import {
+  createShopifyAppSubscription,
+  getShopifyAppBillingStatus
+} from "@/lib/commerce/adapters/shopify/billing";
+import { findSubscriptionTierByCode } from "@/lib/commerce/core/billing/subscription-tier-catalog";
+import {
   DEFAULT_SHOPIFY_WEBHOOK_TOPICS,
   registerShopifyWebhooks
 } from "@/lib/commerce/adapters/shopify/webhook-register";
@@ -69,12 +74,16 @@ export const shopifyAdapter: CommercePlatformAdapter = {
     return normalizeShopifyWebhook(input.topic, input.rawBody);
   },
 
-  async getBillingStatus() {
-    notImplemented("getBillingStatus");
+  async getBillingStatus(input) {
+    return getShopifyAppBillingStatus(input.context);
   },
 
-  async createBillingSession() {
-    notImplemented("createBillingSession");
+  async createBillingSession(input) {
+    const tier = await findSubscriptionTierByCode(input.planExternalId);
+    if (!tier) {
+      throw new CommerceAdapterError("INVALID_TIER", `Unknown tier: ${input.planExternalId}`);
+    }
+    return createShopifyAppSubscription(input.context, tier, input);
   },
 
   async getStorefrontCtaPlacementInstructions(

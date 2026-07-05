@@ -33,6 +33,10 @@ vi.mock("@/lib/commerce/core/sync/sync-run-repo", () => ({
   getLatestSyncRun: vi.fn(async () => null)
 }));
 
+vi.mock("@/lib/commerce/core/billing/billing-service", () => ({
+  assertCommerceFeatureEntitlement: vi.fn(async () => undefined)
+}));
+
 import {
   getAdapterForConnection,
   requireLinkedShopConnection

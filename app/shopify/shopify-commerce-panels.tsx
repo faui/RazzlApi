@@ -3,6 +3,8 @@
 import { BlockStack } from "@shopify/polaris";
 import { useState } from "react";
 
+import { ShopifyAppFooter } from "@/app/shopify/shopify-app-footer";
+import { ShopifyBillingPanel } from "@/app/shopify/shopify-billing-panel";
 import { ShopifyCtaSettingsPanel } from "@/app/shopify/shopify-cta-settings-panel";
 import { ShopifyCustomerPreviewPanel } from "@/app/shopify/shopify-customer-preview-panel";
 import { ShopifyLaunchAnalyticsPanel } from "@/app/shopify/shopify-launch-analytics-panel";
@@ -45,6 +47,7 @@ export function ShopifyCommercePanels({
         apiPublicOrigin={apiPublicOrigin}
         productStats={productStats}
       />
+      <ShopifyBillingPanel shop={shop} apiPublicOrigin={apiPublicOrigin} tenantLinked={tenantLinked} />
       <ShopifyCustomerPreviewPanel />
       <ShopifyProductsPanel
         shop={shop}
@@ -55,6 +58,7 @@ export function ShopifyCommercePanels({
       />
       <ShopifyCtaSettingsPanel shop={shop} apiPublicOrigin={apiPublicOrigin} tenantLinked={tenantLinked} />
       <ShopifyLaunchAnalyticsPanel shop={shop} apiPublicOrigin={apiPublicOrigin} tenantLinked={tenantLinked} />
+      <ShopifyAppFooter />
     </BlockStack>
   );
 }

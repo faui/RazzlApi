@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
+import { requireLinkedShopConnection } from "@/lib/commerce/core/connections/adapter-context";
+import {
+  CommerceBillingError,
+  createShopifyBillingSession
+} from "@/lib/commerce/core/billing/billing-service";
 import {
   CommerceMappingError,
   mapExternalProductToRazzlProduct,
@@ -13,6 +18,7 @@ type MapBody = {
   shop?: string;
   externalProductId?: string;
   productPk?: number;
+  tierCode?: string;
 };
 
 type CtaBody = {
@@ -58,6 +64,41 @@ export async function POST(request: Request) {
     const items = await mapExternalProductToRazzlProduct(shop, externalProductId, productPk);
     return NextResponse.json({ ok: true, items: mapItems(items) });
   } catch (error) {
+    if (error instanceof CommerceBillingError) {
+      if (error.code === "BILLING_REQUIRED" && body.tierCode?.trim()) {
+        try {
+          const { connection } = await requireLinkedShopConnection(shop);
+          const tenantPk = connection.tenant_fk;
+          if (tenantPk) {
+            const session = await createShopifyBillingSession(
+              connection,
+              tenantPk,
+              body.tierCode.trim()
+            );
+            return NextResponse.json(
+              {
+                ok: false,
+                error: error.message,
+                code: error.code,
+                confirmationUrl: session.confirmationUrl
+              },
+              { status: 402 }
+            );
+          }
+        } catch (sessionError) {
+          if (sessionError instanceof CommerceBillingError) {
+            return NextResponse.json(
+              { ok: false, error: sessionError.message, code: sessionError.code },
+              { status: 402 }
+            );
+          }
+        }
+      }
+      return NextResponse.json(
+        { ok: false, error: error.message, code: error.code },
+        { status: 402 }
+      );
+    }
     if (error instanceof CommerceMappingError) {
       return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: 400 });
     }
@@ -110,6 +151,9 @@ export async function PATCH(request: Request) {
     const items = await toggleExternalProductCta(shop, externalProductId, body.enabled);
     return NextResponse.json({ ok: true, items: mapItems(items) });
   } catch (error) {
+    if (error instanceof CommerceBillingError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: 402 });
+    }
     if (error instanceof CommerceMappingError) {
       return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: 400 });
     }

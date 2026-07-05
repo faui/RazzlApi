@@ -22,6 +22,7 @@ import {
 import { commerceQuery } from "@/lib/commerce/core/db/query";
 import type { CommercePlatformSyncRunRow } from "@/lib/commerce/types/commerce-platform-sync-run";
 import type { CommerceSyncType } from "@/lib/commerce/types/enums";
+import { assertCommerceFeatureEntitlement } from "@/lib/commerce/core/billing/billing-service";
 
 export type ProductSyncResult = {
   syncRunId: number;
@@ -35,6 +36,9 @@ export async function runProductSync(
   syncType: CommerceSyncType = "manual"
 ): Promise<ProductSyncResult> {
   const { connection, context } = await requireLinkedShopConnection(shop);
+  if (connection.tenant_fk) {
+    await assertCommerceFeatureEntitlement(connection, connection.tenant_fk, "sync");
+  }
   const adapter = getAdapterForConnection(connection);
   const syncStartedAt = new Date();
   const syncRunId = await createSyncRun(connection.commerce_platform_connection_pk, "shopify", syncType);
