@@ -1,6 +1,9 @@
 import type { NormalizedCommerceEvent } from "@/lib/commerce/adapters/types";
 import { getAdapter } from "@/lib/commerce/adapters/registry";
-import { DEFAULT_SHOPIFY_WEBHOOK_TOPICS } from "@/lib/commerce/adapters/shopify/webhook-register";
+import {
+  DEFAULT_SHOPIFY_WEBHOOK_TOPICS,
+  registerShopifyWebhooks
+} from "@/lib/commerce/adapters/shopify/webhook-register";
 import {
   SHOPIFY_COMPLIANCE_WEBHOOK_TOPICS,
   SHOPIFY_PRODUCT_WEBHOOK_TOPICS
@@ -42,13 +45,9 @@ export async function registerWebhooksForShop(shopDomain: string): Promise<void>
 
   const context = buildAdapterContextFromConnection(connection);
   const config = getShopifyEnvConfig();
-  const adapter = getAdapter("shopify");
+  const callbackUrl = `${config.publicOrigin}/api/commerce/shopify/webhooks`;
 
-  await adapter.registerWebhooks({
-    context,
-    callbackBaseUrl: config.publicOrigin,
-    topics: [...DEFAULT_SHOPIFY_WEBHOOK_TOPICS]
-  });
+  await registerShopifyWebhooks(context, callbackUrl, [...DEFAULT_SHOPIFY_WEBHOOK_TOPICS]);
 
   traceLog(2, "shopify:webhooks:registered", {
     shop: shopDomain,
