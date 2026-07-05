@@ -6,7 +6,6 @@ import {
   Box,
   Button,
   Card,
-  FormLayout,
   Icon,
   InlineGrid,
   InlineStack,
@@ -18,7 +17,7 @@ import { ChatIcon, ExternalIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useState } from "react";
 
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
-import { ShopifyCopilotPreviewVideo } from "@/app/shopify/shopify-copilot-preview-video";
+import { ShopifyCtaStorefrontPreview } from "@/app/shopify/shopify-cta-storefront-preview";
 import { ShopifySwitch } from "@/app/shopify/shopify-switch";
 
 type CtaConfig = {
@@ -144,7 +143,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
   return (
     <Card padding="0">
       <Box padding="400" background="bg-surface-secondary">
-        <InlineStack gap="200" blockAlign="center">
+        <InlineStack gap="200" blockAlign="start">
           <Icon source={ChatIcon} tone="base" />
           <BlockStack gap="100">
             <Text as="h2" variant="headingMd">
@@ -170,22 +169,70 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
           ) : config ? (
             <form onSubmit={(event) => void handleSave(event)}>
               <BlockStack gap="500">
-                <InlineGrid columns={{ xs: 1, md: 2 }} gap="400">
-                  <Select
-                    label="Default button label"
-                    options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
-                    value={config.ctaLabelDefault}
-                    onChange={(value) =>
-                      setConfig((prev) => (prev ? { ...prev, ctaLabelDefault: value } : prev))
-                    }
-                  />
-                  <BlockStack gap="200">
-                    <Text as="span" variant="bodySm" tone="subdued">
-                      Storefront appearance
-                    </Text>
-                    <div className="shopify-cta-preview-panel">
-                      <BlockStack gap="200" inlineAlign="start">
-                        <ShopifyCopilotPreviewVideo variant="compact" />
+                <div className="shopify-cta-settings-columns">
+                  <InlineGrid columns={{ xs: 1, md: 2 }} gap="400">
+                    <BlockStack gap="400">
+                      <Select
+                        label="Default button label"
+                        options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
+                        value={config.ctaLabelDefault}
+                        onChange={(value) =>
+                          setConfig((prev) => (prev ? { ...prev, ctaLabelDefault: value } : prev))
+                        }
+                      />
+                      <Select
+                        label="Open Copilot in"
+                        options={[
+                          { label: "New tab ↗", value: "new_tab" },
+                          { label: "Same tab", value: "same_tab" }
+                        ]}
+                        value={config.ctaOpenMode}
+                        onChange={(value) =>
+                          setConfig((prev) =>
+                            prev ? { ...prev, ctaOpenMode: value as CtaConfig["ctaOpenMode"] } : prev
+                          )
+                        }
+                      />
+                      <Select
+                        label="Style mode"
+                        options={[
+                          { label: "Inherit theme", value: "inherit_theme" },
+                          { label: "Button", value: "button" },
+                          { label: "Link", value: "link" },
+                          { label: "Badge", value: "badge" }
+                        ]}
+                        value={config.ctaStyleMode}
+                        onChange={(value) =>
+                          setConfig((prev) =>
+                            prev ? { ...prev, ctaStyleMode: value as CtaConfig["ctaStyleMode"] } : prev
+                          )
+                        }
+                      />
+                      <InlineStack gap="200" blockAlign="center">
+                        <ShopifySwitch
+                          checked={config.showPoweredByRazzl}
+                          label='Show "Powered by Razzl"'
+                          onChange={(checked) =>
+                            setConfig((prev) => (prev ? { ...prev, showPoweredByRazzl: checked } : prev))
+                          }
+                        />
+                        <Text as="span" variant="bodyMd">
+                          Show &quot;Powered by Razzl&quot;
+                        </Text>
+                      </InlineStack>
+                    </BlockStack>
+
+                    <div className="shopify-cta-settings-preview-column">
+                      <BlockStack gap="200">
+                        <Text as="span" variant="bodySm" tone="subdued">
+                          Storefront appearance
+                        </Text>
+                        <div className="shopify-cta-preview-panel">
+                          <ShopifyCtaStorefrontPreview
+                            label={config.ctaLabelDefault}
+                            styleMode={config.ctaStyleMode}
+                          />
+                        </div>
                         {config.showPoweredByRazzl ? (
                           <Text as="p" variant="bodySm" tone="subdued">
                             Powered by <strong>Razzl</strong>
@@ -193,59 +240,16 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                         ) : null}
                       </BlockStack>
                     </div>
-                  </BlockStack>
-                </InlineGrid>
+                  </InlineGrid>
+                </div>
 
-                <FormLayout>
-                  <FormLayout.Group>
-                    <Select
-                      label="Open Copilot in"
-                      options={[
-                        { label: "New tab ↗", value: "new_tab" },
-                        { label: "Same tab", value: "same_tab" }
-                      ]}
-                      value={config.ctaOpenMode}
-                      onChange={(value) =>
-                        setConfig((prev) =>
-                          prev ? { ...prev, ctaOpenMode: value as CtaConfig["ctaOpenMode"] } : prev
-                        )
-                      }
-                    />
-                    <Select
-                      label="Style mode"
-                      options={[
-                        { label: "Inherit theme", value: "inherit_theme" },
-                        { label: "Button", value: "button" },
-                        { label: "Link", value: "link" },
-                        { label: "Badge", value: "badge" }
-                      ]}
-                      value={config.ctaStyleMode}
-                      onChange={(value) =>
-                        setConfig((prev) =>
-                          prev ? { ...prev, ctaStyleMode: value as CtaConfig["ctaStyleMode"] } : prev
-                        )
-                      }
-                    />
-                  </FormLayout.Group>
-                </FormLayout>
-
-                <InlineStack align="space-between" blockAlign="center">
-                  <InlineStack gap="200" blockAlign="center">
-                    <ShopifySwitch
-                      checked={config.showPoweredByRazzl}
-                      label='Show "Powered by Razzl"'
-                      onChange={(checked) =>
-                        setConfig((prev) => (prev ? { ...prev, showPoweredByRazzl: checked } : prev))
-                      }
-                    />
-                    <Text as="span" variant="bodyMd">
-                      Show &quot;Powered by Razzl&quot;
-                    </Text>
+                <div className="shopify-cta-settings-footer">
+                  <InlineStack align="end">
+                    <Button submit variant="primary" loading={saving}>
+                      Save CTA settings
+                    </Button>
                   </InlineStack>
-                  <Button submit variant="primary" loading={saving}>
-                    Save CTA settings
-                  </Button>
-                </InlineStack>
+                </div>
               </BlockStack>
             </form>
           ) : null}
