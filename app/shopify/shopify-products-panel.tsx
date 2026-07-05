@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   Card,
+  ChoiceList,
   EmptyState,
   Icon,
   IndexTable,
@@ -17,20 +18,17 @@ import {
   SkeletonBodyText,
   Text,
   TextField,
-  Thumbnail,
-  Tooltip
+  Thumbnail
 } from "@shopify/polaris";
-import {
-  ClockIcon,
-  MenuHorizontalIcon,
-  QuestionCircleIcon,
-  SearchIcon
-} from "@shopify/polaris-icons";
+import { ClockIcon, MenuHorizontalIcon, SearchIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  getProductWorkflowStatus,
+  ProductStatusSelect,
+  type ProductWorkflowStatus
+} from "@/app/shopify/product-status-select";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
-import { ShopifySwitch } from "@/app/shopify/shopify-switch";
-import { StatusBadge } from "@/app/shopify/status-badge";
 
 type SyncStatusResponse = {
   ok: boolean;
@@ -88,40 +86,17 @@ type Props = {
 type SortColumn = "title" | "copilot" | "status";
 type SortDirection = "asc" | "desc";
 
-function mappingStatusVariant(
-  status: string | null,
-  mappingStatus: string
-): "unmapped" | "published" | "draft" | "processing" | "error" {
-  if (mappingStatus === "unmapped" || !status) {
-    return "unmapped";
-  }
-  switch (status) {
-    case "active":
-      return "published";
-    case "in-progress":
-      return "processing";
-    case "processing-error":
-      return "error";
-    default:
-      return "draft";
-  }
-}
+type MappingModalState = {
+  id: string;
+  title: string;
+};
 
-function mappingStatusLabel(status: string | null, mappingStatus: string): string {
-  if (mappingStatus === "unmapped" || !status) {
-    return "Unmapped";
-  }
-  switch (status) {
-    case "active":
-      return "Published";
-    case "in-progress":
-      return "Processing";
-    case "processing-error":
-      return "Error";
-    default:
-      return "Draft";
-  }
-}
+type UnmapModalState = {
+  id: string;
+  title: string;
+  copilotName: string;
+  fromStatus: "mapped" | "cta_on";
+};
 
 function rowCreateCopilotUrl(baseUrl: string, externalProductId: string) {
   const url = new URL(baseUrl);
@@ -138,6 +113,13 @@ function formatSyncTime(value: string | null | undefined): string | null {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function workflowStatusSortKey(product: ProductRow): string {
+  const status = getProductWorkflowStatus(product);
+  if (status === "unmapped") return "0_unmapped";
+  if (status === "mapped") return "1_mapped";
+  return "2_cta_on";
 }
 
 export function ShopifyProductsPanel({
@@ -161,8 +143,12 @@ export function ShopifyProductsPanel({
   const [sortColumn, setSortColumn] = useState<SortColumn>("title");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [activePopover, setActivePopover] = useState<string | null>(null);
-  const [mappingModal, setMappingModal] = useState<{ id: string; title: string } | null>(null);
+  const [mappingModal, setMappingModal] = useState<MappingModalState | null>(null);
+  const [unmapModal, setUnmapModal] = useState<UnmapModalState | null>(null);
+  const [mapMode, setMapMode] = useState<"existing" | "create">("existing");
+  const [copilotSearch, setCopilotSearch] = useState("");
   const [selectedCopilotPk, setSelectedCopilotPk] = useState("");
+  const [statusInlineErrors, setStatusInlineErrors] = useState<Record<string, string>>({});
 
   const updateStats = useCallback(
     (items: ProductRow[], count: number) => {
@@ -226,6 +212,18 @@ export function ShopifyProductsPanel({
     };
   }, [loadData]);
 
+  const filteredStudioProducts = useMemo(() => {
+    const normalized = copilotSearch.trim().toLowerCase();
+    if (!normalized) {
+      return studioProducts;
+    }
+    return studioProducts.filter(
+      (product) =>
+        product.modelName.toLowerCase().includes(normalized) ||
+        product.razzlCode.toLowerCase().includes(normalized)
+    );
+  }, [copilotSearch, studioProducts]);
+
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     let rows = [...products];
@@ -239,7 +237,7 @@ export function ShopifyProductsPanel({
     }
 
     if (statusFilter === "mapped") {
-      rows = rows.filter((product) => Boolean(product.productPk));
+      rows = rows.filter((product) => Boolean(product.productPk) && !product.storefrontCtaEnabled);
     } else if (statusFilter === "unmapped") {
       rows = rows.filter((product) => !product.productPk);
     } else if (statusFilter === "cta_on") {
@@ -253,7 +251,7 @@ export function ShopifyProductsPanel({
       } else if (sortColumn === "copilot") {
         cmp = (a.mappedModelName ?? "").localeCompare(b.mappedModelName ?? "");
       } else {
-        cmp = (a.copilotStatus ?? a.mappingStatus).localeCompare(b.copilotStatus ?? b.mappingStatus);
+        cmp = workflowStatusSortKey(a).localeCompare(workflowStatusSortKey(b));
       }
       return sortDirection === "asc" ? cmp : -cmp;
     });
@@ -263,6 +261,24 @@ export function ShopifyProductsPanel({
 
   const mappedCount = products.filter((product) => product.productPk).length;
   const lastSynced = formatSyncTime(syncStatus?.latestRun?.completedAt);
+
+  function clearStatusInlineError(externalProductId: string) {
+    setStatusInlineErrors((prev) => {
+      if (!prev[externalProductId]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[externalProductId];
+      return next;
+    });
+  }
+
+  function openMappingModal(product: ProductRow) {
+    setMapMode("existing");
+    setCopilotSearch("");
+    setSelectedCopilotPk("");
+    setMappingModal({ id: product.externalProductId, title: product.title });
+  }
 
   async function handleRefreshSnapshots(externalProductId?: string) {
     setRefreshing(true);
@@ -324,12 +340,15 @@ export function ShopifyProductsPanel({
     if (!response.ok || !data.ok) {
       setErrorBanner(data.error ?? "Mapping failed");
       showToast(data.error ?? "Mapping failed", { isError: true });
-      return;
+      return false;
     }
     setMappingModal(null);
     setSelectedCopilotPk("");
+    setCopilotSearch("");
+    clearStatusInlineError(externalProductId);
     showToast("Copilot mapped");
     await loadData();
+    return true;
   }
 
   async function handleUnmap(externalProductId: string) {
@@ -339,11 +358,14 @@ export function ShopifyProductsPanel({
     );
     const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
-      showToast(data.error ?? "Unmap failed", { isError: true });
-      return;
+      showToast(data.error ?? "Remove mapping failed", { isError: true });
+      return false;
     }
-    showToast("Copilot unmapped");
+    setUnmapModal(null);
+    clearStatusInlineError(externalProductId);
+    showToast("Mapping removed");
     await loadData();
+    return true;
   }
 
   async function handleToggleCta(externalProductId: string, enabled: boolean) {
@@ -354,11 +376,64 @@ export function ShopifyProductsPanel({
     });
     const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
-      showToast(data.error ?? "CTA update failed", { isError: true });
-      return;
+      showToast(data.error ?? "Status update failed", { isError: true });
+      return false;
     }
+    clearStatusInlineError(externalProductId);
     showToast(enabled ? "Storefront CTA enabled" : "Storefront CTA disabled");
     await loadData();
+    return true;
+  }
+
+  function handleStatusChange(product: ProductRow, nextStatus: ProductWorkflowStatus) {
+    const currentStatus = getProductWorkflowStatus(product);
+    if (nextStatus === currentStatus) {
+      return;
+    }
+
+    clearStatusInlineError(product.externalProductId);
+
+    if (currentStatus === "unmapped" && nextStatus === "cta_on") {
+      setStatusInlineErrors((prev) => ({
+        ...prev,
+        [product.externalProductId]: "Map a copilot first before enabling the storefront CTA."
+      }));
+      return;
+    }
+
+    if (currentStatus === "unmapped" && nextStatus === "mapped") {
+      openMappingModal(product);
+      return;
+    }
+
+    if (currentStatus === "mapped" && nextStatus === "cta_on") {
+      void handleToggleCta(product.externalProductId, true);
+      return;
+    }
+
+    if (currentStatus === "cta_on" && nextStatus === "mapped") {
+      void handleToggleCta(product.externalProductId, false);
+      return;
+    }
+
+    if (currentStatus === "mapped" && nextStatus === "unmapped") {
+      setUnmapModal({
+        id: product.externalProductId,
+        title: product.title,
+        copilotName: product.mappedModelName ?? "Copilot",
+        fromStatus: "mapped"
+      });
+      return;
+    }
+
+    if (currentStatus === "cta_on" && nextStatus === "unmapped") {
+      setUnmapModal({
+        id: product.externalProductId,
+        title: product.title,
+        copilotName: product.mappedModelName ?? "Copilot",
+        fromStatus: "cta_on"
+      });
+    }
   }
 
   if (!tenantLinked) {
@@ -374,64 +449,45 @@ export function ShopifyProductsPanel({
   const resourceName = { singular: "product", plural: "products" };
 
   const rowMarkup = filteredProducts.map((product, index) => {
-    const statusVariant = mappingStatusVariant(product.copilotStatus, product.mappingStatus);
-    const statusLabel = mappingStatusLabel(product.copilotStatus, product.mappingStatus);
+    const workflowStatus = getProductWorkflowStatus(product);
     const isPopoverOpen = activePopover === product.externalProductId;
+    const isMapped = Boolean(product.productPk);
 
     const actions: Array<{
       content: string;
       url?: string;
       external?: boolean;
-      destructive?: boolean;
+      disabled?: boolean;
       onAction?: () => void;
-    }> = [];
-
-    if (product.launchUrl && product.copilotStatus === "active") {
-      actions.push({
+    }> = [
+      {
         content: "Launch Copilot",
-        url: product.launchUrl,
-        external: true
-      });
-    }
-    if (product.editUrl) {
-      actions.push({
+        url: product.launchUrl ?? undefined,
+        external: true,
+        disabled: !isMapped || !product.launchUrl
+      },
+      {
         content: "Edit in Studio",
-        url: product.editUrl,
-        external: true
-      });
-    }
-    if (!product.productPk && studioCreateCopilotUrl) {
-      actions.push({
-        content: "Create Copilot",
-        url: rowCreateCopilotUrl(studioCreateCopilotUrl, product.externalProductId),
-        external: true
-      });
-    }
-    actions.push({
-      content: product.productPk ? "Change mapping" : "Map Copilot",
-      onAction: () => {
-        setActivePopover(null);
-        setMappingModal({ id: product.externalProductId, title: product.title });
-        setSelectedCopilotPk("");
-      }
-    });
-    if (product.productPk) {
-      actions.push({
+        url: product.editUrl ?? undefined,
+        external: true,
+        disabled: !isMapped || !product.editUrl
+      },
+      {
+        content: "Change mapping",
+        onAction: () => {
+          setActivePopover(null);
+          openMappingModal(product);
+        }
+      },
+      {
         content: "Refresh status",
+        disabled: !isMapped,
         onAction: () => {
           setActivePopover(null);
           void handleRefreshSnapshots(product.externalProductId);
         }
-      });
-      actions.push({
-        content: "Unmap",
-        destructive: true,
-        onAction: () => {
-          setActivePopover(null);
-          void handleUnmap(product.externalProductId);
-        }
-      });
-    }
+      }
+    ];
 
     return (
       <IndexTable.Row id={product.externalProductId} key={product.externalProductId} position={index}>
@@ -459,34 +515,14 @@ export function ShopifyProductsPanel({
           )}
         </IndexTable.Cell>
         <IndexTable.Cell>
-          <StatusBadge label={statusLabel} variant={statusVariant} />
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-          {product.productPk ? (
-            <InlineStack gap="200" blockAlign="center" wrap={false}>
-              <ShopifySwitch
-                checked={product.storefrontCtaEnabled}
-                label={`Storefront CTA for ${product.title}`}
-                onChange={(enabled) =>
-                  void handleToggleCta(product.externalProductId, enabled)
-                }
-              />
-              <Text as="span" variant="bodySm" tone={product.storefrontCtaEnabled ? "success" : "subdued"}>
-                {product.storefrontCtaEnabled ? "On" : "Off"}
-              </Text>
-            </InlineStack>
-          ) : (
-            <InlineStack gap="100" blockAlign="center" wrap={false}>
-              <Text as="span" tone="subdued" variant="bodySm">
-                <span className="shopify-map-first-hint">Map first</span>
-              </Text>
-              <Tooltip content="Map a copilot to this product before you can enable the storefront CTA.">
-                <button type="button" className="shopify-map-first-info" aria-label="Why is storefront CTA disabled?">
-                  <QuestionCircleIcon />
-                </button>
-              </Tooltip>
-            </InlineStack>
-          )}
+          <div className="shopify-product-status-select-wrap">
+            <ProductStatusSelect
+              value={workflowStatus}
+              productTitle={product.title}
+              inlineError={statusInlineErrors[product.externalProductId] ?? null}
+              onChange={(next) => handleStatusChange(product, next)}
+            />
+          </div>
         </IndexTable.Cell>
         <IndexTable.Cell>
           <Popover
@@ -569,9 +605,9 @@ export function ShopifyProductsPanel({
                 labelHidden
                 options={[
                   { label: "All products", value: "all" },
-                  { label: "Mapped", value: "mapped" },
                   { label: "Unmapped", value: "unmapped" },
-                  { label: "CTA enabled", value: "cta_on" }
+                  { label: "Mapped", value: "mapped" },
+                  { label: "Storefront CTA On", value: "cta_on" }
                 ]}
                 value={statusFilter}
                 onChange={setStatusFilter}
@@ -609,33 +645,32 @@ export function ShopifyProductsPanel({
         ) : (
           <div className="shopify-index-table-wrap">
             <IndexTable
-            selectable={false}
-            resourceName={resourceName}
-            itemCount={filteredProducts.length}
-            headings={[
-              { title: "Store product", id: "title" },
-              { title: "Copilot", id: "copilot" },
-              { title: "Status", id: "status" },
-              { title: "Storefront CTA" },
-              { title: "Actions" }
-            ]}
-            sortable={[true, true, true, false, false]}
-            sortDirection={sortDirection === "asc" ? "ascending" : "descending"}
-            sortColumnIndex={sortColumn === "title" ? 0 : sortColumn === "copilot" ? 1 : 2}
-            onSort={(headingIndex, direction) => {
-              const column: SortColumn =
-                headingIndex === 0 ? "title" : headingIndex === 1 ? "copilot" : "status";
-              setSortColumn(column);
-              setSortDirection(direction === "ascending" ? "asc" : "desc");
-            }}
-          >
-            {rowMarkup}
-          </IndexTable>
-          <div className="shopify-index-table-footer">
-            <Text as="p" variant="bodySm" tone="subdued">
-              Showing {filteredProducts.length} of {products.length} products · {mappedCount} mapped
-            </Text>
-          </div>
+              selectable={false}
+              resourceName={resourceName}
+              itemCount={filteredProducts.length}
+              headings={[
+                { title: "Store product", id: "title" },
+                { title: "Copilot", id: "copilot" },
+                { title: "Status", id: "status" },
+                { title: "Actions" }
+              ]}
+              sortable={[true, true, true, false]}
+              sortDirection={sortDirection === "asc" ? "ascending" : "descending"}
+              sortColumnIndex={sortColumn === "title" ? 0 : sortColumn === "copilot" ? 1 : 2}
+              onSort={(headingIndex, direction) => {
+                const column: SortColumn =
+                  headingIndex === 0 ? "title" : headingIndex === 1 ? "copilot" : "status";
+                setSortColumn(column);
+                setSortDirection(direction === "ascending" ? "asc" : "desc");
+              }}
+            >
+              {rowMarkup}
+            </IndexTable>
+            <div className="shopify-index-table-footer">
+              <Text as="p" variant="bodySm" tone="subdued">
+                Showing {filteredProducts.length} of {products.length} products · {mappedCount} mapped
+              </Text>
+            </div>
           </div>
         )}
       </Card>
@@ -645,40 +680,124 @@ export function ShopifyProductsPanel({
         onClose={() => {
           setMappingModal(null);
           setSelectedCopilotPk("");
+          setCopilotSearch("");
+          setMapMode("existing");
         }}
         title={mappingModal ? `Map copilot — ${mappingModal.title}` : "Map copilot"}
-        primaryAction={{
-          content: "Map copilot",
-          disabled: !selectedCopilotPk,
-          onAction: () => {
-            if (mappingModal && selectedCopilotPk) {
-              void handleMap(mappingModal.id, Number(selectedCopilotPk));
-            }
-          }
-        }}
+        primaryAction={
+          mapMode === "existing"
+            ? {
+                content: "Map copilot",
+                disabled: !selectedCopilotPk,
+                onAction: () => {
+                  if (mappingModal && selectedCopilotPk) {
+                    void handleMap(mappingModal.id, Number(selectedCopilotPk));
+                  }
+                }
+              }
+            : undefined
+        }
         secondaryActions={[
           {
             content: "Cancel",
             onAction: () => {
               setMappingModal(null);
               setSelectedCopilotPk("");
+              setCopilotSearch("");
+              setMapMode("existing");
             }
           }
         ]}
       >
         <Modal.Section>
-          <Select
-            label="Razzl copilot"
-            options={[
-              { label: "Select copilot…", value: "" },
-              ...studioProducts.map((studioProduct) => ({
-                label: `${studioProduct.modelName} (${studioProduct.razzlCode})`,
-                value: String(studioProduct.productPk)
-              }))
-            ]}
-            value={selectedCopilotPk}
-            onChange={setSelectedCopilotPk}
-          />
+          <BlockStack gap="400">
+            <ChoiceList
+              title="How would you like to map this product?"
+              choices={[
+                { label: "Map existing copilot", value: "existing" },
+                { label: "Create new copilot from PDF", value: "create" }
+              ]}
+              selected={[mapMode]}
+              onChange={(selected) => setMapMode((selected[0] as "existing" | "create") ?? "existing")}
+            />
+
+            {mapMode === "existing" ? (
+              <BlockStack gap="300">
+                <TextField
+                  label="Search copilots"
+                  value={copilotSearch}
+                  onChange={setCopilotSearch}
+                  placeholder="Search by name or Razzl code"
+                  autoComplete="off"
+                  clearButton
+                  onClearButtonClick={() => setCopilotSearch("")}
+                />
+                <Select
+                  label="Razzl copilot"
+                  options={[
+                    { label: "Select copilot…", value: "" },
+                    ...filteredStudioProducts.map((studioProduct) => ({
+                      label: `${studioProduct.modelName} (${studioProduct.razzlCode})`,
+                      value: String(studioProduct.productPk)
+                    }))
+                  ]}
+                  value={selectedCopilotPk}
+                  onChange={setSelectedCopilotPk}
+                />
+              </BlockStack>
+            ) : studioCreateCopilotUrl && mappingModal ? (
+              <BlockStack gap="200">
+                <Text as="p" tone="subdued">
+                  Create a new copilot in Razzl Studio from a PDF, then return here to map it to this
+                  product.
+                </Text>
+                <Button
+                  url={rowCreateCopilotUrl(studioCreateCopilotUrl, mappingModal.id)}
+                  external
+                  variant="primary"
+                >
+                  Create copilot from PDF in Studio
+                </Button>
+              </BlockStack>
+            ) : (
+              <Text as="p" tone="subdued">
+                Studio create URL is not available for this shop.
+              </Text>
+            )}
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
+
+      <Modal
+        open={unmapModal !== null}
+        onClose={() => setUnmapModal(null)}
+        title={
+          unmapModal?.fromStatus === "cta_on"
+            ? "Remove mapping and disable storefront CTA?"
+            : "Remove copilot mapping?"
+        }
+        primaryAction={{
+          content: "Remove mapping",
+          destructive: true,
+          onAction: () => {
+            if (unmapModal) {
+              void handleUnmap(unmapModal.id);
+            }
+          }
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => setUnmapModal(null)
+          }
+        ]}
+      >
+        <Modal.Section>
+          <Text as="p" variant="bodyMd">
+            {unmapModal?.fromStatus === "cta_on"
+              ? "Remove mapping and disable storefront CTA? Customers on this product page will no longer see the Setup Copilot button."
+              : `Remove copilot mapping? This will disconnect ${unmapModal?.copilotName ?? "this copilot"} from ${unmapModal?.title ?? "this product"}. The storefront CTA will be hidden immediately if active.`}
+          </Text>
         </Modal.Section>
       </Modal>
     </>

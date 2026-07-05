@@ -186,7 +186,10 @@ export async function toggleExternalProductCta(
   );
 
   if (!mapping?.product_fk) {
-    throw new CommerceMappingError("NOT_MAPPED", "Map a Razzl product before enabling CTA");
+    throw new CommerceMappingError(
+      "NOT_MAPPED",
+      "Map a copilot first before enabling the storefront CTA."
+    );
   }
   if (mapping.product_status_snapshot !== "active" && enabled) {
     throw new CommerceMappingError("NOT_LAUNCHABLE", "Copilot must be published before enabling CTA");
