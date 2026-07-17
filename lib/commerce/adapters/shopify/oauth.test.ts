@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildShopifyAuthorizeUrl,
   createSignedOAuthState,
+  exchangeShopifyAuthCode,
+  fetchShopifyShopIdentity,
   prepareShopifyOAuthSession,
   verifyShopifyOAuthHmac,
   verifySignedOAuthState
@@ -97,5 +99,111 @@ describe("buildShopifyAuthorizeUrl", () => {
     expect(verifySignedOAuthState(state, "demo.myshopify.com")).not.toBeNull();
     expect(verifySignedOAuthState(`${state}x`, "demo.myshopify.com")).toBeNull();
     expect(verifySignedOAuthState(state, "other.myshopify.com")).toBeNull();
+  });
+});
+
+describe("exchangeShopifyAuthCode", () => {
+  beforeEach(() => {
+    vi.stubEnv("SHOPIFY_API_KEY", TEST_ENV.SHOPIFY_API_KEY);
+    vi.stubEnv("SHOPIFY_API_SECRET", TEST_ENV.SHOPIFY_API_SECRET);
+    vi.stubEnv("SHOPIFY_SCOPES", TEST_ENV.SHOPIFY_SCOPES);
+    vi.stubEnv("RAZZL_PUBLIC_ORIGIN", TEST_ENV.RAZZL_PUBLIC_ORIGIN);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("exchanges code using form-urlencoded body and GraphQL shop lookup", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({ access_token: "shpat_test", scope: "read_products" })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            data: {
+              shop: {
+                id: "gid://shopify/Shop/12345",
+                legacyResourceId: "12345",
+                name: "Demo Shop",
+                myshopifyDomain: "demo.myshopify.com"
+              }
+            }
+          })
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await exchangeShopifyAuthCode({
+      shopDomain: "demo.myshopify.com",
+      authCode: "auth-code"
+    });
+
+    expect(result.accessToken).toBe("shpat_test");
+    expect(result.externalStoreId).toBe("12345");
+    expect(result.scopes).toEqual(["read_products"]);
+
+    const [tokenUrl, tokenInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(tokenUrl).toBe("https://demo.myshopify.com/admin/oauth/access_token");
+    expect(tokenInit.headers).toMatchObject({
+      "Content-Type": "application/x-www-form-urlencoded"
+    });
+    expect(String(tokenInit.body)).toContain("client_id=test-api-key");
+    expect(String(tokenInit.body)).toContain("code=auth-code");
+  });
+
+  it("surfaces Shopify token exchange error details", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () =>
+          JSON.stringify({
+            error: "invalid_grant",
+            error_description: "Authorization code was already redeemed."
+          })
+      })
+    );
+
+    await expect(
+      exchangeShopifyAuthCode({ shopDomain: "demo.myshopify.com", authCode: "used-code" })
+    ).rejects.toMatchObject({
+      code: "TOKEN_EXCHANGE_FAILED",
+      message: expect.stringContaining("invalid_grant")
+    });
+  });
+});
+
+describe("fetchShopifyShopIdentity", () => {
+  beforeEach(() => {
+    vi.stubEnv("SHOPIFY_API_KEY", TEST_ENV.SHOPIFY_API_KEY);
+    vi.stubEnv("SHOPIFY_API_SECRET", TEST_ENV.SHOPIFY_API_SECRET);
+    vi.stubEnv("RAZZL_PUBLIC_ORIGIN", TEST_ENV.RAZZL_PUBLIC_ORIGIN);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("throws SHOP_FETCH_FAILED when GraphQL returns errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () =>
+          JSON.stringify({ errors: [{ message: "Access denied for shop field." }] })
+      })
+    );
+
+    await expect(fetchShopifyShopIdentity("demo.myshopify.com", "token")).rejects.toMatchObject({
+      code: "SHOP_FETCH_FAILED",
+      message: expect.stringContaining("Access denied")
+    });
   });
 });

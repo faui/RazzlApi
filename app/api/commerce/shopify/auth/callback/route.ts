@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 
+import { mapOAuthCallbackFailure } from "@/lib/commerce/adapters/shopify/oauth-errors";
 import {
   exchangeShopifyAuthCode,
   verifyShopifyOAuthHmac,
   verifySignedOAuthState
 } from "@/lib/commerce/adapters/shopify/oauth";
 import { getShopifyEnvConfig, normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
-import { upsertShopifyInstall } from "@/lib/commerce/core/connections/platform-connection-repo";
+import {
+  findConnectionByStoreDomain,
+  upsertShopifyInstall
+} from "@/lib/commerce/core/connections/platform-connection-repo";
 import { encryptPlatformToken } from "@/lib/commerce/core/crypto/token-crypto";
 import { registerWebhooksForShop } from "@/lib/commerce/core/events/webhook-processor-service";
 import { traceLog } from "@/lib/logger";
@@ -33,10 +37,11 @@ export async function GET(request: Request) {
   if (!shopDomain) {
     return NextResponse.json({ ok: false, error: "Invalid shop domain" }, { status: 400 });
   }
+  const resolvedShopDomain = shopDomain;
 
-  const statePayload = verifySignedOAuthState(state, shopDomain);
+  const statePayload = verifySignedOAuthState(state, resolvedShopDomain);
   if (!statePayload) {
-    traceLog(1, "shopify:oauth:invalid_state", { shop: shopDomain });
+    traceLog(1, "shopify:oauth:invalid_state", { shop: resolvedShopDomain });
     return NextResponse.json({ ok: false, error: "Invalid OAuth state" }, { status: 403 });
   }
 
@@ -46,8 +51,25 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid HMAC" }, { status: 401 });
   }
 
+  const oauthHost = statePayload.host ?? hostParam ?? null;
+
+  function buildSuccessRedirect(): NextResponse {
+    const redirectUrl = new URL("/shopify", config.publicOrigin);
+    redirectUrl.searchParams.set("shop", resolvedShopDomain);
+    if (oauthHost) {
+      redirectUrl.searchParams.set("host", oauthHost);
+      redirectUrl.searchParams.set("embedded", "1");
+    }
+    return NextResponse.redirect(redirectUrl.toString());
+  }
+
   try {
-    const authResult = await exchangeShopifyAuthCode({ shopDomain, authCode: code });
+    const existing = await findConnectionByStoreDomain(resolvedShopDomain);
+    if (existing?.install_status === "installed" || existing?.install_status === "connected") {
+      return buildSuccessRedirect();
+    }
+
+    const authResult = await exchangeShopifyAuthCode({ shopDomain: resolvedShopDomain, authCode: code });
     const accessTokenEncrypted = encryptPlatformToken(authResult.accessToken);
 
     await upsertShopifyInstall({
@@ -61,27 +83,22 @@ export async function GET(request: Request) {
     });
 
     try {
-      await registerWebhooksForShop(shopDomain);
+      await registerWebhooksForShop(resolvedShopDomain);
     } catch (registerError) {
       traceLog(1, "shopify:webhooks:register_failed", {
-        shop: shopDomain,
+        shop: resolvedShopDomain,
         error: registerError instanceof Error ? registerError.message : String(registerError)
       });
     }
 
-    const oauthHost = statePayload.host ?? hostParam ?? null;
-    const redirectUrl = new URL("/shopify", config.publicOrigin);
-    redirectUrl.searchParams.set("shop", shopDomain);
-    if (oauthHost) {
-      redirectUrl.searchParams.set("host", oauthHost);
-      redirectUrl.searchParams.set("embedded", "1");
-    }
-    return NextResponse.redirect(redirectUrl.toString());
+    return buildSuccessRedirect();
   } catch (error) {
+    const mapped = mapOAuthCallbackFailure(error);
     traceLog(1, "shopify:oauth:callback_failed", {
-      shop: shopDomain,
-      error: error instanceof Error ? error.message : String(error)
+      shop: resolvedShopDomain,
+      code: mapped.body.code,
+      error: mapped.body.error
     });
-    return NextResponse.json({ ok: false, error: "OAuth callback failed" }, { status: 500 });
+    return NextResponse.json(mapped.body, { status: mapped.status });
   }
 }

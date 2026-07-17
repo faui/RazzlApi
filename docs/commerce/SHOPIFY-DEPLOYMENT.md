@@ -194,9 +194,16 @@ Configure `prod` environment in RazzlApi repo (`deploy-api-prod.yml` — manual 
 |---------|----------------|
 | OAuth route 404 | Old API image — redeploy RazzlApi with Slice 3+ |
 | `Invalid HMAC` | Wrong `SHOPIFY_API_SECRET` in Secrets Manager vs Partner Dashboard |
+| `Invalid OAuth state` | Stale callback URL or clock skew — click **Connect store** again |
+| `{"ok":false,"error":"OAuth callback failed"}` (legacy) | Generic 500 — redeploy; callback now returns `code` (`TOKEN_EXCHANGE_FAILED`, `SHOP_FETCH_FAILED`, etc.) |
+| `TOKEN_EXCHANGE_FAILED` / `invalid_grant` | Authorization code already used — start a fresh Connect flow; do not reload callback URL |
+| `SHOP_FETCH_FAILED` | Shopify Admin API issue — verify `SHOPIFY_API_VERSION` (default `2026-01`) |
+| `OAUTH_NOT_READY` / encryption check false | Missing or invalid `COMMERCE_TOKEN_ENCRYPTION_KEY` in `dev/shopify/razzl_api` |
 | `COMMERCE_TOKEN_ENCRYPTION_KEY must be...` | Key not valid base64 32-byte; regenerate |
 | Callback 500 on DB | API task missing DB secrets or RDS SG rules |
 | Redirect URI mismatch | Partner redirect URL must exactly match `RAZZL_PUBLIC_ORIGIN` + `/api/commerce/shopify/auth/callback` |
+
+Diagnostics: `GET /api/commerce/shopify/oauth/readiness` — checks Shopify env, token encryption round-trip, and DB ping.
 
 ---
 

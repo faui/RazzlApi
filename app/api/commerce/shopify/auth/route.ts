@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getShopifyOAuthInfrastructureStatus } from "@/lib/commerce/adapters/shopify/oauth-infrastructure";
 import { prepareShopifyOAuthSession } from "@/lib/commerce/adapters/shopify/oauth";
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
 
@@ -22,6 +23,20 @@ export async function GET(request: Request) {
   const shopDomain = normalizeShopDomain(shopParam);
   if (!shopDomain) {
     return NextResponse.json({ ok: false, error: "Invalid shop domain" }, { status: 400 });
+  }
+
+  const infrastructure = await getShopifyOAuthInfrastructureStatus();
+  if (!infrastructure.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Shopify OAuth is not ready",
+        code: "OAUTH_NOT_READY",
+        checks: infrastructure.checks,
+        details: infrastructure.errors
+      },
+      { status: 503 }
+    );
   }
 
   const host = url.searchParams.get("host");

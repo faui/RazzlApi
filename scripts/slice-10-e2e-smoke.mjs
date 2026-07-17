@@ -46,6 +46,17 @@ await run("health", async () => {
   }
 });
 
+await run("oauth readiness", async () => {
+  const { response, body } = await fetchJson(`${API_ORIGIN}/api/commerce/shopify/oauth/readiness`);
+  if (!response.ok || body.ok !== true) {
+    const detail = body.errors?.join("; ") ?? body.error ?? `HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+  console.log(
+    `      encryption=${body.checks?.tokenEncryption} db=${body.checks?.database} shopifyConfig=${body.checks?.shopifyConfig}`
+  );
+});
+
 await run("webhook route exists (not 404)", async () => {
   const { response } = await fetchJson(`${API_ORIGIN}/api/commerce/shopify/webhooks`, {
     method: "POST",

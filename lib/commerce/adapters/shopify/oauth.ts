@@ -150,8 +150,26 @@ export type ExchangeAuthCodeInput = {
 
 export type ShopifyAccessTokenResponse = {
   access_token: string;
-  scope: string;
+  scope?: string;
 };
+
+function formatShopifyOAuthErrorBody(rawBody: string): string {
+  if (!rawBody) {
+    return "empty response body";
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody) as { error?: string; error_description?: string };
+    const parts = [parsed.error, parsed.error_description].filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join(": ");
+    }
+  } catch {
+    /* fall through to raw text */
+  }
+
+  return rawBody.slice(0, 300);
+}
 
 /** Exchange OAuth authorization code for offline access token. */
 export async function exchangeShopifyAuthCode(
@@ -163,26 +181,57 @@ export async function exchangeShopifyAuthCode(
     throw new CommerceAdapterError("INVALID_SHOP", "Invalid shop domain", false);
   }
 
-  const response = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      client_id: config.apiKey,
-      client_secret: config.apiSecret,
-      code: input.authCode
-    })
+  const tokenRequestBody = new URLSearchParams({
+    client_id: config.apiKey,
+    client_secret: config.apiSecret,
+    code: input.authCode
   });
 
+  const response = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json"
+    },
+    body: tokenRequestBody.toString()
+  });
+
+  const responseText = await response.text();
   if (!response.ok) {
+    const detail = formatShopifyOAuthErrorBody(responseText);
     throw new CommerceAdapterError(
       "TOKEN_EXCHANGE_FAILED",
-      `Shopify token exchange failed (${response.status})`,
-      response.status >= 500
+      `Shopify token exchange failed (${response.status}): ${detail}`,
+      response.status >= 500,
+      responseText
     );
   }
 
-  const body = (await response.json()) as ShopifyAccessTokenResponse;
-  const scopes = body.scope.split(",").map((scope) => scope.trim()).filter(Boolean);
+  let body: ShopifyAccessTokenResponse;
+  try {
+    body = JSON.parse(responseText) as ShopifyAccessTokenResponse;
+  } catch {
+    throw new CommerceAdapterError(
+      "TOKEN_EXCHANGE_FAILED",
+      "Shopify token exchange returned invalid JSON",
+      false,
+      responseText
+    );
+  }
+
+  if (!body.access_token) {
+    throw new CommerceAdapterError(
+      "TOKEN_EXCHANGE_FAILED",
+      "Shopify token exchange response missing access_token",
+      false,
+      body
+    );
+  }
+
+  const scopes = (body.scope ?? "")
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
 
   const shop = await fetchShopifyShopIdentity(shopDomain, body.access_token);
 
@@ -192,40 +241,87 @@ export async function exchangeShopifyAuthCode(
     externalStoreId: shop.externalStoreId,
     storeDomain: shop.storeDomain,
     storeDisplayName: shop.storeDisplayName,
-    rawPayload: { token: { scope: body.scope }, shop: shop.rawPayload }
+    rawPayload: { token: { scope: body.scope ?? "" }, shop: shop.rawPayload }
   };
 }
 
-/** Fetch shop identity via Admin REST API after token exchange. */
+type ShopifyGraphqlShopResponse = {
+  data?: {
+    shop?: {
+      id: string;
+      legacyResourceId: string;
+      name: string;
+      myshopifyDomain: string;
+    };
+  };
+  errors?: Array<{ message: string }>;
+};
+
+/** Fetch shop identity via Admin GraphQL after token exchange. */
 export async function fetchShopifyShopIdentity(
   shopDomain: string,
   accessToken: string
 ): Promise<ShopifyShopIdentity> {
   const config = getShopifyEnvConfig();
   const response = await fetch(
-    `https://${shopDomain}/admin/api/${config.apiVersion}/shop.json`,
+    `https://${shopDomain}/admin/api/${config.apiVersion}/graphql.json`,
     {
+      method: "POST",
       headers: {
         "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
         Accept: "application/json"
-      }
+      },
+      body: JSON.stringify({
+        query: "query { shop { id legacyResourceId name myshopifyDomain } }"
+      })
     }
   );
 
+  const responseText = await response.text();
   if (!response.ok) {
     throw new CommerceAdapterError(
       "SHOP_FETCH_FAILED",
-      `Failed to fetch shop identity (${response.status})`,
-      response.status >= 500
+      `Failed to fetch shop identity (${response.status}): ${responseText.slice(0, 300)}`,
+      response.status >= 500,
+      responseText
     );
   }
 
-  const body = (await response.json()) as { shop: { id: number | string; name?: string; myshopify_domain?: string } };
-  const shop = body.shop;
+  let payload: ShopifyGraphqlShopResponse;
+  try {
+    payload = JSON.parse(responseText) as ShopifyGraphqlShopResponse;
+  } catch {
+    throw new CommerceAdapterError(
+      "SHOP_FETCH_FAILED",
+      "Shopify shop identity response was not valid JSON",
+      false,
+      responseText
+    );
+  }
+
+  if (payload.errors?.length) {
+    throw new CommerceAdapterError(
+      "SHOP_FETCH_FAILED",
+      payload.errors.map((error) => error.message).join("; "),
+      false,
+      payload.errors
+    );
+  }
+
+  const shop = payload.data?.shop;
+  if (!shop?.legacyResourceId) {
+    throw new CommerceAdapterError(
+      "SHOP_FETCH_FAILED",
+      "Shopify shop identity response missing shop data",
+      false,
+      payload
+    );
+  }
 
   return {
-    externalStoreId: String(shop.id),
-    storeDomain: shop.myshopify_domain ?? shopDomain,
+    externalStoreId: shop.legacyResourceId,
+    storeDomain: shop.myshopifyDomain ?? shopDomain,
     storeDisplayName: shop.name ?? null,
     rawPayload: shop
   };
