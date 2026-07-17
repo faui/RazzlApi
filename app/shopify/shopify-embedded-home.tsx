@@ -1,11 +1,11 @@
 "use client";
 
 import { BlockStack, Layout, Page } from "@shopify/polaris";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ShopifyCommercePanels } from "@/app/shopify/shopify-commerce-panels";
 import { ShopifyConnectionCard } from "@/app/shopify/shopify-connection-card";
-import { startShopifyOAuthInstall } from "@/app/shopify/shopify-oauth";
+import { startShopifyOAuthInstall, whenAppBridgeReady } from "@/app/shopify/shopify-oauth";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 
@@ -19,12 +19,14 @@ type Props = {
 
 export function ShopifyEmbeddedHome({
   shop,
+  host,
   linkedSuccess,
   status,
   apiPublicOrigin
 }: Props) {
   const showToast = useCommerceToast();
   const [createCopilotUrl, setCreateCopilotUrl] = useState<string | null>(null);
+  const oauthRedirectStarted = useRef(false);
 
   useEffect(() => {
     if (linkedSuccess) {
@@ -32,11 +34,25 @@ export function ShopifyEmbeddedHome({
     }
   }, [linkedSuccess, showToast]);
 
-  // Fresh installs open /shopify before OAuth has persisted — break out to authorize.
+  // Fresh installs: OAuth not persisted yet — redirect via App Bridge (iframe-safe).
   useEffect(() => {
-    if (!shop || status) return;
-    startShopifyOAuthInstall(apiPublicOrigin, shop);
-  }, [apiPublicOrigin, shop, status]);
+    if (!shop || status || oauthRedirectStarted.current) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      const bridgeReady = await whenAppBridgeReady();
+      if (cancelled || !bridgeReady || oauthRedirectStarted.current) return;
+
+      oauthRedirectStarted.current = true;
+      await startShopifyOAuthInstall(apiPublicOrigin, shop, host);
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiPublicOrigin, host, shop, status]);
 
   const primaryAction =
     createCopilotUrl && status?.tenantLinked
@@ -63,7 +79,12 @@ export function ShopifyEmbeddedHome({
       <Layout>
         <Layout.Section>
           <BlockStack gap="500">
-            <ShopifyConnectionCard shop={shop} status={status} apiPublicOrigin={apiPublicOrigin} />
+            <ShopifyConnectionCard
+              shop={shop}
+              host={host}
+              status={status}
+              apiPublicOrigin={apiPublicOrigin}
+            />
 
             {shop && status ? (
               <ShopifyCommercePanels

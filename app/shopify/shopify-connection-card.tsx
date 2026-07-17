@@ -21,6 +21,7 @@ import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/pl
 
 type Props = {
   shop: string | null;
+  host: string | null;
   status: ConnectionStatusSummary | null;
   apiPublicOrigin: string;
 };
@@ -34,13 +35,19 @@ function storeInitials(name: string | null, domain: string | null): string {
   return source.slice(0, 2).toUpperCase();
 }
 
-export function ShopifyConnectionCard({ shop, status, apiPublicOrigin }: Props) {
+export function ShopifyConnectionCard({ shop, host, status, apiPublicOrigin }: Props) {
   if (!shop) {
     return (
       <Card>
-        <Text as="p" tone="subdued">
-          Open this app from your Shopify admin to view connection status.
-        </Text>
+        <BlockStack gap="200">
+          <Text as="p" tone="subdued">
+            Open this app from your Shopify admin to view connection status.
+          </Text>
+          <Text as="p" variant="bodySm" tone="subdued">
+            If you just installed the app, return to Apps in Shopify admin and open Razzl Product Setup
+            Copilot again.
+          </Text>
+        </BlockStack>
       </Card>
     );
   }
@@ -53,7 +60,10 @@ export function ShopifyConnectionCard({ shop, status, apiPublicOrigin }: Props) 
             Complete OAuth install to connect <strong>{shop}</strong>.
           </Banner>
           <InlineStack align="start">
-            <Button variant="primary" onClick={() => startShopifyOAuthInstall(apiPublicOrigin, shop)}>
+            <Button
+              variant="primary"
+              onClick={() => void startShopifyOAuthInstall(apiPublicOrigin, shop, host)}
+            >
               Connect store
             </Button>
           </InlineStack>

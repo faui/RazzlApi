@@ -1,6 +1,6 @@
 import { getConnectionStatusByStoreDomain } from "@/lib/commerce/core/connections/platform-connection-repo";
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
-import { ShopifyEmbeddedHome } from "@/app/shopify/shopify-embedded-home";
+import { ShopifyEmbeddedShell } from "@/app/shopify/shopify-embedded-shell";
 
 type PageProps = {
   searchParams: Promise<{ shop?: string; host?: string; linked?: string }>;
@@ -18,11 +18,11 @@ export default async function ShopifyEmbeddedHomePage({ searchParams }: PageProp
   const status = shopDomain ? await getConnectionStatusByStoreDomain(shopDomain) : null;
 
   return (
-    <ShopifyEmbeddedHome
-      shop={shopDomain}
-      host={host ?? null}
+    <ShopifyEmbeddedShell
+      initialShop={shopDomain}
+      initialHost={host ?? null}
       linkedSuccess={linked === "1"}
-      status={status}
+      initialStatus={status}
       apiPublicOrigin={getApiPublicOrigin()}
     />
   );

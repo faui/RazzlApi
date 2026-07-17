@@ -18,6 +18,7 @@ export type ShopifyShopIdentity = {
 };
 
 export const SHOPIFY_OAUTH_STATE_COOKIE = "shopify_oauth_state";
+export const SHOPIFY_OAUTH_HOST_COOKIE = "shopify_oauth_host";
 
 export function generateOAuthState(): string {
   return randomBytes(16).toString("hex");

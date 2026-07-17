@@ -3,6 +3,13 @@ export {};
 declare global {
   interface Window {
     shopify?: {
+      config?: {
+        shop?: string;
+        host?: string;
+      };
+      redirect?: {
+        remote: (url: string) => void;
+      };
       toast: {
         show: (message: string, options?: { isError?: boolean; duration?: number }) => void;
       };

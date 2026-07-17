@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import {
   buildShopifyAuthorizeUrl,
   generateOAuthState,
+  SHOPIFY_OAUTH_HOST_COOKIE,
   SHOPIFY_OAUTH_STATE_COOKIE
 } from "@/lib/commerce/adapters/shopify/oauth";
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid shop domain" }, { status: 400 });
   }
 
+  const host = url.searchParams.get("host");
   const state = generateOAuthState();
   const cookieStore = await cookies();
   cookieStore.set(SHOPIFY_OAUTH_STATE_COOKIE, state, {
@@ -32,6 +34,16 @@ export async function GET(request: Request) {
     maxAge: OAUTH_STATE_MAX_AGE,
     path: "/"
   });
+
+  if (host) {
+    cookieStore.set(SHOPIFY_OAUTH_HOST_COOKIE, host, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: OAUTH_STATE_MAX_AGE,
+      path: "/"
+    });
+  }
 
   const authorizeUrl = buildShopifyAuthorizeUrl(shopDomain, state);
   return NextResponse.redirect(authorizeUrl);

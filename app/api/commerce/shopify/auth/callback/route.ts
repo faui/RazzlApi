@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import {
   exchangeShopifyAuthCode,
+  SHOPIFY_OAUTH_HOST_COOKIE,
   SHOPIFY_OAUTH_STATE_COOKIE,
   verifyShopifyOAuthHmac
 } from "@/lib/commerce/adapters/shopify/oauth";
@@ -32,7 +33,9 @@ export async function GET(request: Request) {
 
   const cookieStore = await cookies();
   const expectedState = cookieStore.get(SHOPIFY_OAUTH_STATE_COOKIE)?.value;
+  const oauthHost = cookieStore.get(SHOPIFY_OAUTH_HOST_COOKIE)?.value;
   cookieStore.delete(SHOPIFY_OAUTH_STATE_COOKIE);
+  cookieStore.delete(SHOPIFY_OAUTH_HOST_COOKIE);
 
   if (!expectedState || expectedState !== state) {
     traceLog(1, "shopify:oauth:invalid_state", { shop });
@@ -75,6 +78,10 @@ export async function GET(request: Request) {
 
     const redirectUrl = new URL("/shopify", config.publicOrigin);
     redirectUrl.searchParams.set("shop", shopDomain);
+    if (oauthHost) {
+      redirectUrl.searchParams.set("host", oauthHost);
+      redirectUrl.searchParams.set("embedded", "1");
+    }
     return NextResponse.redirect(redirectUrl.toString());
   } catch (error) {
     traceLog(1, "shopify:oauth:callback_failed", {
