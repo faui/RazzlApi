@@ -511,7 +511,7 @@ export async function fetchShopifyShopIdentity(
 
   const shop = payload.data?.shop;
   const externalStoreId = shop?.id ? parseShopifyLegacyResourceId(shop.id) : null;
-  if (!externalStoreId) {
+  if (!shop || !externalStoreId) {
     throw new CommerceAdapterError(
       "SHOP_FETCH_FAILED",
       "Shopify shop identity response missing shop data",
