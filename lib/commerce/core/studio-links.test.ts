@@ -27,8 +27,15 @@ describe("studio-links", () => {
 
   it("buildStudioCreateCopilotPath preserves Shopify product context", () => {
     expect(
-      buildStudioCreateCopilotPath({ shop: "demo.myshopify.com", externalProductId: "12345" })
-    ).toBe("/app/dashboard?create_copilot=1&shopify_product=12345&shopify_shop=demo.myshopify.com");
+      buildStudioCreateCopilotPath({
+        shop: "demo.myshopify.com",
+        externalProductId: "12345",
+        productTitle: "Sample chair",
+        productImageUrl: "https://cdn.shopify.com/image.jpg"
+      })
+    ).toBe(
+      "/app/dashboard?create_copilot=1&shopify_product=12345&shopify_shop=demo.myshopify.com&shopify_title=Sample+chair&shopify_image=https%3A%2F%2Fcdn.shopify.com%2Fimage.jpg"
+    );
   });
 
   it("buildStudioCreateCopilotUrl uses configured origin", () => {

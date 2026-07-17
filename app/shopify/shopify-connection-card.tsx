@@ -6,6 +6,7 @@ import {
   Banner,
   BlockStack,
   Box,
+  Button,
   Card,
   InlineGrid,
   InlineStack,
@@ -15,12 +16,13 @@ import {
 import { StoreIcon } from "@shopify/polaris-icons";
 
 import { RAZZL_MARKETING_URL } from "@/app/shopify/shopify-copilot-preview-video";
+import { startShopifyOAuthInstall } from "@/app/shopify/shopify-oauth";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 
 type Props = {
   shop: string | null;
   status: ConnectionStatusSummary | null;
-  showInstallHint?: boolean;
+  apiPublicOrigin: string;
 };
 
 function storeInitials(name: string | null, domain: string | null): string {
@@ -32,7 +34,7 @@ function storeInitials(name: string | null, domain: string | null): string {
   return source.slice(0, 2).toUpperCase();
 }
 
-export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) {
+export function ShopifyConnectionCard({ shop, status, apiPublicOrigin }: Props) {
   if (!shop) {
     return (
       <Card>
@@ -43,12 +45,19 @@ export function ShopifyConnectionCard({ shop, status, showInstallHint }: Props) 
     );
   }
 
-  if (showInstallHint || !status) {
+  if (!status) {
     return (
       <Card>
-        <Banner tone="warning" title="Store not connected">
-          Complete OAuth install to connect <strong>{shop}</strong>.
-        </Banner>
+        <BlockStack gap="400">
+          <Banner tone="warning" title="Store not connected">
+            Complete OAuth install to connect <strong>{shop}</strong>.
+          </Banner>
+          <InlineStack align="start">
+            <Button variant="primary" onClick={() => startShopifyOAuthInstall(apiPublicOrigin, shop)}>
+              Connect store
+            </Button>
+          </InlineStack>
+        </BlockStack>
       </Card>
     );
   }

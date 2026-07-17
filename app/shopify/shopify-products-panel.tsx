@@ -89,6 +89,7 @@ type SortDirection = "asc" | "desc";
 type MappingModalState = {
   id: string;
   title: string;
+  imageUrl: string | null;
 };
 
 type UnmapModalState = {
@@ -98,9 +99,15 @@ type UnmapModalState = {
   fromStatus: "mapped" | "cta_on";
 };
 
-function rowCreateCopilotUrl(baseUrl: string, externalProductId: string) {
+function rowCreateCopilotUrl(baseUrl: string, product: Pick<ProductRow, "externalProductId" | "title" | "imageUrl">) {
   const url = new URL(baseUrl);
-  url.searchParams.set("shopify_product", externalProductId);
+  url.searchParams.set("shopify_product", product.externalProductId);
+  if (product.title) {
+    url.searchParams.set("shopify_title", product.title);
+  }
+  if (product.imageUrl) {
+    url.searchParams.set("shopify_image", product.imageUrl);
+  }
   return url.toString();
 }
 
@@ -277,7 +284,7 @@ export function ShopifyProductsPanel({
     setMapMode("existing");
     setCopilotSearch("");
     setSelectedCopilotPk("");
-    setMappingModal({ id: product.externalProductId, title: product.title });
+    setMappingModal({ id: product.externalProductId, title: product.title, imageUrl: product.imageUrl });
   }
 
   async function handleRefreshSnapshots(externalProductId?: string) {
@@ -760,7 +767,11 @@ export function ShopifyProductsPanel({
                   product.
                 </Text>
                 <Button
-                  url={rowCreateCopilotUrl(studioCreateCopilotUrl, mappingModal.id)}
+                  url={rowCreateCopilotUrl(studioCreateCopilotUrl, {
+                    externalProductId: mappingModal.id,
+                    title: mappingModal.title,
+                    imageUrl: mappingModal.imageUrl
+                  })}
                   external
                   variant="primary"
                 >

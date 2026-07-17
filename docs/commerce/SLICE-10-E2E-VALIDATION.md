@@ -85,9 +85,46 @@ LIMIT 10;
 ## Blockers before marking Slice 10 fully validated
 
 1. **`shopify app deploy`** with absolute webhook URIs (post-fix)
-2. **Partner Dashboard:** manual pricing (not managed), public distribution for Billing API
-3. **Manual billing approval** on dev store (cannot automate without Shopify admin session)
-4. **Provide dev store domain** to run full smoke script connection/billing checks
+2. **Shopify Partners Dashboard** ([partners.shopify.com](https://partners.shopify.com)) → **Apps** → **Razzl Product Setup Copilot** → **Distribution** (public distribution) and **Pricing** (manual pricing, not managed — required for `appSubscriptionCreate`)
+3. **Manual billing approval** in the **Shopify embedded app** (not Studio subscription page): open `https://api-dev.razzl.com/shopify` on the dev store → **Billing** card → choose plan → **Approve plan in Shopify**. Requires `SHOPIFY_BILLING_TEST=true` on api-dev ECS. Only applies to tenants on the **Shopify billing lane** (no `tenant_stripe_customer` row at link time).
+4. Dev store domain confirmed: `razzl-dev.myshopify.com`
+
+## Observed state — `razzl-dev.myshopify.com` (2026-07-05)
+
+| Query | Your result | Interpretation |
+|-------|-------------|----------------|
+| `commerce_platform_connection` | tenant **123**, `billing_source=none`, `not_required` | Link likely predates Slice 10 billing init; lane still resolves to **Stripe** because tenant 123 has `tenant_stripe_customer` |
+| `commerce_billing_account` | empty | `initializeBillingOnTenantLink` did not run (pre-Slice-10 link). Backfill optional for Stripe lane; required for Shopify billing E2E |
+| `tenant_subscription` | rows for tenant **124**, multiple `is_current=1` | Wrong tenant for this store, or separate test data — **tenant 123** (linked store) has no current subscription → `hasEntitlement=false` in smoke |
+| `commerce_platform_event` | empty | No billing webhooks received (wrong TOML webhook URLs until redeploy) |
+
+### Shopify billing E2E on this store
+
+This tenant is on the **Stripe lane** (OQ-020). Studio subscription page is the correct billing UI; Shopify charge flow is **not** used.
+
+To exercise Shopify billing E2E, use a **new Studio tenant without Stripe** and link it to the dev store (or unlink/re-link after removing `tenant_stripe_customer` for a dedicated test account).
+
+### Optional backfill (Stripe lane, existing link)
+
+```sql
+-- Run only if commerce_billing_account row is missing for tenant 123
+INSERT INTO commerce_billing_account (
+  tenant_fk, commerce_platform_connection_fk, billing_source, acquisition_source,
+  platform_billing_status, trial_enabled, trial_duration_days, trial_max_products
+)
+SELECT c.tenant_fk, c.commerce_platform_connection_pk, 'stripe', c.acquisition_source,
+       'not_required', 1, 7, 1
+FROM commerce_platform_connection c
+WHERE c.store_domain = 'razzl-dev.myshopify.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM commerce_billing_account ba
+    WHERE ba.commerce_platform_connection_fk = c.commerce_platform_connection_pk
+  );
+
+UPDATE commerce_platform_connection
+SET billing_source = 'stripe', platform_billing_status = 'not_required'
+WHERE store_domain = 'razzl-dev.myshopify.com';
+```
 
 ## Stripe lane regression
 

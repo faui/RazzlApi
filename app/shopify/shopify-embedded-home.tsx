@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { ShopifyCommercePanels } from "@/app/shopify/shopify-commerce-panels";
 import { ShopifyConnectionCard } from "@/app/shopify/shopify-connection-card";
+import { startShopifyOAuthInstall } from "@/app/shopify/shopify-oauth";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 
@@ -31,6 +32,12 @@ export function ShopifyEmbeddedHome({
     }
   }, [linkedSuccess, showToast]);
 
+  // Fresh installs open /shopify before OAuth has persisted — break out to authorize.
+  useEffect(() => {
+    if (!shop || status) return;
+    startShopifyOAuthInstall(apiPublicOrigin, shop);
+  }, [apiPublicOrigin, shop, status]);
+
   const primaryAction =
     createCopilotUrl && status?.tenantLinked
       ? {
@@ -56,7 +63,7 @@ export function ShopifyEmbeddedHome({
       <Layout>
         <Layout.Section>
           <BlockStack gap="500">
-            <ShopifyConnectionCard shop={shop} status={status} />
+            <ShopifyConnectionCard shop={shop} status={status} apiPublicOrigin={apiPublicOrigin} />
 
             {shop && status ? (
               <ShopifyCommercePanels
@@ -66,8 +73,6 @@ export function ShopifyEmbeddedHome({
                 apiPublicOrigin={apiPublicOrigin}
                 onCreateCopilotUrl={setCreateCopilotUrl}
               />
-            ) : shop ? (
-              <ShopifyConnectionCard shop={shop} status={null} showInstallHint />
             ) : null}
           </BlockStack>
         </Layout.Section>

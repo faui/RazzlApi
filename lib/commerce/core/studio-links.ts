@@ -20,6 +20,10 @@ export type StudioCreateCopilotLinkOptions = {
   /** Shopify external product id — preserved for post-create mapping context. */
   externalProductId?: string;
   shop?: string;
+  /** Shopify product title — pre-fills Studio create-manual model name. */
+  productTitle?: string;
+  /** Shopify product image URL — pre-fills Studio create-manual thumbnail. */
+  productImageUrl?: string;
 };
 
 /** Relative Studio path that auto-opens the Product Copilot (Upload PDF) dialog. */
@@ -30,6 +34,12 @@ export function buildStudioCreateCopilotPath(options?: StudioCreateCopilotLinkOp
   }
   if (options?.shop) {
     params.set("shopify_shop", options.shop);
+  }
+  if (options?.productTitle) {
+    params.set("shopify_title", options.productTitle);
+  }
+  if (options?.productImageUrl) {
+    params.set("shopify_image", options.productImageUrl);
   }
   return `/app/dashboard?${params.toString()}`;
 }
