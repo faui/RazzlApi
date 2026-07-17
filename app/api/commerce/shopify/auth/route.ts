@@ -2,8 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import {
-  buildShopifyAuthorizeUrl,
-  generateOAuthState,
+  prepareShopifyOAuthSession,
   SHOPIFY_OAUTH_HOST_COOKIE,
   SHOPIFY_OAUTH_STATE_COOKIE
 } from "@/lib/commerce/adapters/shopify/oauth";
@@ -11,21 +10,19 @@ import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
 
 const OAUTH_STATE_MAX_AGE = 600;
 
-/** Start Shopify OAuth install — redirect merchant to authorize URL. */
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const shopParam = url.searchParams.get("shop");
-  if (!shopParam) {
-    return NextResponse.json({ ok: false, error: "Missing shop parameter" }, { status: 400 });
+function wantsJsonResponse(request: Request, url: URL): boolean {
+  if (url.searchParams.get("format") === "json") {
+    return true;
   }
+  const accept = request.headers.get("accept") ?? "";
+  return accept.includes("application/json");
+}
 
-  const shopDomain = normalizeShopDomain(shopParam);
-  if (!shopDomain) {
-    return NextResponse.json({ ok: false, error: "Invalid shop domain" }, { status: 400 });
-  }
-
-  const host = url.searchParams.get("host");
-  const state = generateOAuthState();
+async function beginOAuthSession(
+  shopDomain: string,
+  host: string | null
+): Promise<{ authorizeUrl: string }> {
+  const { state, authorizeUrl } = prepareShopifyOAuthSession(shopDomain);
   const cookieStore = await cookies();
   cookieStore.set(SHOPIFY_OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
@@ -45,6 +42,28 @@ export async function GET(request: Request) {
     });
   }
 
-  const authorizeUrl = buildShopifyAuthorizeUrl(shopDomain, state);
+  return { authorizeUrl };
+}
+
+/** Start Shopify OAuth install — redirect merchant to authorize URL. */
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const shopParam = url.searchParams.get("shop");
+  if (!shopParam) {
+    return NextResponse.json({ ok: false, error: "Missing shop parameter" }, { status: 400 });
+  }
+
+  const shopDomain = normalizeShopDomain(shopParam);
+  if (!shopDomain) {
+    return NextResponse.json({ ok: false, error: "Invalid shop domain" }, { status: 400 });
+  }
+
+  const host = url.searchParams.get("host");
+  const { authorizeUrl } = await beginOAuthSession(shopDomain, host);
+
+  if (wantsJsonResponse(request, url)) {
+    return NextResponse.json({ ok: true, authorizeUrl });
+  }
+
   return NextResponse.redirect(authorizeUrl);
 }

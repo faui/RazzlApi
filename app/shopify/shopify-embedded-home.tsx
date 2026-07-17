@@ -1,11 +1,10 @@
 "use client";
 
 import { BlockStack, Layout, Page } from "@shopify/polaris";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ShopifyCommercePanels } from "@/app/shopify/shopify-commerce-panels";
 import { ShopifyConnectionCard } from "@/app/shopify/shopify-connection-card";
-import { startShopifyOAuthInstall, whenAppBridgeReady } from "@/app/shopify/shopify-oauth";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 
@@ -26,33 +25,13 @@ export function ShopifyEmbeddedHome({
 }: Props) {
   const showToast = useCommerceToast();
   const [createCopilotUrl, setCreateCopilotUrl] = useState<string | null>(null);
-  const oauthRedirectStarted = useRef(false);
+  const [oauthStarting, setOauthStarting] = useState(false);
 
   useEffect(() => {
     if (linkedSuccess) {
       showToast("Razzl account linked successfully");
     }
   }, [linkedSuccess, showToast]);
-
-  // Fresh installs: OAuth not persisted yet — redirect via App Bridge (iframe-safe).
-  useEffect(() => {
-    if (!shop || status || oauthRedirectStarted.current) return;
-
-    let cancelled = false;
-
-    const run = async () => {
-      const bridgeReady = await whenAppBridgeReady();
-      if (cancelled || !bridgeReady || oauthRedirectStarted.current) return;
-
-      oauthRedirectStarted.current = true;
-      await startShopifyOAuthInstall(apiPublicOrigin, shop, host);
-    };
-
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [apiPublicOrigin, host, shop, status]);
 
   const primaryAction =
     createCopilotUrl && status?.tenantLinked
@@ -81,9 +60,22 @@ export function ShopifyEmbeddedHome({
           <BlockStack gap="500">
             <ShopifyConnectionCard
               shop={shop}
-              host={host}
               status={status}
-              apiPublicOrigin={apiPublicOrigin}
+              oauthStarting={oauthStarting}
+              onConnectStore={async () => {
+                if (!shop) return;
+                setOauthStarting(true);
+                try {
+                  const { startShopifyOAuthInstall } = await import("@/app/shopify/shopify-oauth");
+                  await startShopifyOAuthInstall(apiPublicOrigin, shop, host, { fromUserGesture: true });
+                } catch (error) {
+                  showToast(
+                    error instanceof Error ? error.message : "Unable to start store connection",
+                    { isError: true }
+                  );
+                  setOauthStarting(false);
+                }
+              }}
             />
 
             {shop && status ? (

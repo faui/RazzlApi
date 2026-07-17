@@ -13,8 +13,8 @@ export function normalizeShopDomainClient(shop: string): string | null {
   return withDomain;
 }
 
-/** Build OAuth install URL for a Shopify store domain. */
-export function buildShopifyOAuthInstallUrl(
+/** Build OAuth session-start URL (sets cookies; use format=json for embedded clients). */
+export function buildShopifyOAuthSessionUrl(
   apiPublicOrigin: string,
   shop: string,
   host?: string | null
@@ -22,6 +22,7 @@ export function buildShopifyOAuthInstallUrl(
   const origin = apiPublicOrigin.replace(/\/$/, "");
   const url = new URL(`${origin}/api/commerce/shopify/auth`);
   url.searchParams.set("shop", shop);
+  url.searchParams.set("format", "json");
   if (host) {
     url.searchParams.set("host", host);
   }
@@ -58,25 +59,59 @@ export function whenAppBridgeReady(): Promise<boolean> {
   });
 }
 
+async function fetchShopifyAuthorizeUrl(
+  apiPublicOrigin: string,
+  shop: string,
+  host?: string | null
+): Promise<string> {
+  const sessionUrl = buildShopifyOAuthSessionUrl(apiPublicOrigin, shop, host);
+  const response = await fetch(sessionUrl, {
+    credentials: "include",
+    headers: { Accept: "application/json" }
+  });
+  const data = (await response.json()) as { ok?: boolean; authorizeUrl?: string; error?: string };
+  if (!response.ok || !data.ok || !data.authorizeUrl) {
+    throw new Error(data.error ?? "Unable to start OAuth");
+  }
+  return data.authorizeUrl;
+}
+
+/** Navigate top-level window via anchor click (works with user gesture in some browsers). */
+function navigateTopLevelViaAnchor(url: string): void {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.target = "_top";
+  anchor.rel = "noopener noreferrer";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 /**
  * Start Shopify OAuth from embedded admin.
- * Uses App Bridge remote redirect — window.top navigation is blocked in Shopify iframes.
+ * Must redirect directly to Shopify's authorize URL — never our API route inside the iframe.
  */
 export async function startShopifyOAuthInstall(
   apiPublicOrigin: string,
   shop: string,
-  host?: string | null
+  host?: string | null,
+  options?: { fromUserGesture?: boolean }
 ): Promise<boolean> {
-  const url = buildShopifyOAuthInstallUrl(apiPublicOrigin, shop, host);
-  const bridgeReady = await whenAppBridgeReady();
+  const authorizeUrl = await fetchShopifyAuthorizeUrl(apiPublicOrigin, shop, host);
 
-  if (bridgeReady && window.shopify?.redirect?.remote) {
-    window.shopify.redirect.remote(url);
+  if (options?.fromUserGesture) {
+    navigateTopLevelViaAnchor(authorizeUrl);
     return true;
   }
 
-  // Non-embedded dev/testing fallback (direct navigation).
-  window.location.assign(url);
+  const bridgeReady = await whenAppBridgeReady();
+  if (bridgeReady && window.shopify?.redirect?.remote) {
+    window.shopify.redirect.remote(authorizeUrl);
+    return true;
+  }
+
+  navigateTopLevelViaAnchor(authorizeUrl);
   return true;
 }
 

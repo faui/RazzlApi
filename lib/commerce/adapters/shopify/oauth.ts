@@ -20,6 +20,18 @@ export type ShopifyShopIdentity = {
 export const SHOPIFY_OAUTH_STATE_COOKIE = "shopify_oauth_state";
 export const SHOPIFY_OAUTH_HOST_COOKIE = "shopify_oauth_host";
 
+export type PreparedShopifyOAuthSession = {
+  state: string;
+  authorizeUrl: string;
+};
+
+/** Generate OAuth state + Shopify authorize URL for a shop domain. */
+export function prepareShopifyOAuthSession(shopDomain: string): PreparedShopifyOAuthSession {
+  const state = generateOAuthState();
+  const authorizeUrl = buildShopifyAuthorizeUrl(shopDomain, state);
+  return { state, authorizeUrl };
+}
+
 export function generateOAuthState(): string {
   return randomBytes(16).toString("hex");
 }

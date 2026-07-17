@@ -16,14 +16,13 @@ import {
 import { StoreIcon } from "@shopify/polaris-icons";
 
 import { RAZZL_MARKETING_URL } from "@/app/shopify/shopify-copilot-preview-video";
-import { startShopifyOAuthInstall } from "@/app/shopify/shopify-oauth";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 
 type Props = {
   shop: string | null;
-  host: string | null;
   status: ConnectionStatusSummary | null;
-  apiPublicOrigin: string;
+  oauthStarting?: boolean;
+  onConnectStore?: () => void;
 };
 
 function storeInitials(name: string | null, domain: string | null): string {
@@ -35,7 +34,12 @@ function storeInitials(name: string | null, domain: string | null): string {
   return source.slice(0, 2).toUpperCase();
 }
 
-export function ShopifyConnectionCard({ shop, host, status, apiPublicOrigin }: Props) {
+export function ShopifyConnectionCard({
+  shop,
+  status,
+  oauthStarting,
+  onConnectStore
+}: Props) {
   if (!shop) {
     return (
       <Card>
@@ -60,10 +64,7 @@ export function ShopifyConnectionCard({ shop, host, status, apiPublicOrigin }: P
             Complete OAuth install to connect <strong>{shop}</strong>.
           </Banner>
           <InlineStack align="start">
-            <Button
-              variant="primary"
-              onClick={() => void startShopifyOAuthInstall(apiPublicOrigin, shop, host)}
-            >
+            <Button variant="primary" loading={oauthStarting} onClick={() => onConnectStore?.()}>
               Connect store
             </Button>
           </InlineStack>

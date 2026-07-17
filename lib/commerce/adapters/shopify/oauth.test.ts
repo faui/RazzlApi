@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildShopifyAuthorizeUrl,
+  prepareShopifyOAuthSession,
   verifyShopifyOAuthHmac
 } from "@/lib/commerce/adapters/shopify/oauth";
 
@@ -76,5 +77,12 @@ describe("buildShopifyAuthorizeUrl", () => {
     expect(url.searchParams.get("redirect_uri")).toBe(
       "https://api.example.com/api/commerce/shopify/auth/callback"
     );
+  });
+
+  it("prepareShopifyOAuthSession returns state and shop authorize URL", () => {
+    const session = prepareShopifyOAuthSession("demo.myshopify.com");
+    expect(session.state).toMatch(/^[a-f0-9]{32}$/);
+    expect(session.authorizeUrl).toContain("https://demo.myshopify.com/admin/oauth/authorize");
+    expect(session.authorizeUrl).toContain(`state=${session.state}`);
   });
 });
