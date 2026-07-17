@@ -198,6 +198,8 @@ Configure `prod` environment in RazzlApi repo (`deploy-api-prod.yml` — manual 
 | `{"ok":false,"error":"OAuth callback failed"}` (legacy) | Generic 500 — redeploy; callback now returns `code` (`TOKEN_EXCHANGE_FAILED`, `SHOP_FETCH_FAILED`, etc.) |
 | `TOKEN_EXCHANGE_FAILED` / `invalid_grant` | Authorization code already used — start a fresh Connect flow; do not reload callback URL |
 | `SHOP_FETCH_FAILED` | Shopify Admin API issue — verify `SHOPIFY_API_VERSION` (default `2026-01`) |
+| `SHOP_FETCH_FAILED` + non-expiring token message | OAuth must request expiring offline tokens (`expiring=1`) — redeploy latest API |
+| `TOKEN_REFRESH_FAILED` | Refresh token expired (~90 days) — merchant must relaunch app / reconnect |
 | `OAUTH_NOT_READY` / encryption check false | Missing or invalid `COMMERCE_TOKEN_ENCRYPTION_KEY` in `dev/shopify/razzl_api` |
 | `COMMERCE_TOKEN_ENCRYPTION_KEY must be...` | Key not valid base64 32-byte; regenerate |
 | Callback 500 on DB | API task missing DB secrets or RDS SG rules |

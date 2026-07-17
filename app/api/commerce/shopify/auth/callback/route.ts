@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { mapOAuthCallbackFailure } from "@/lib/commerce/adapters/shopify/oauth-errors";
+import { buildUpsertPayloadFromAuthResult } from "@/lib/commerce/adapters/shopify/shopify-token-service";
 import {
   exchangeShopifyAuthCode,
   verifyShopifyOAuthHmac,
@@ -11,7 +12,6 @@ import {
   findConnectionByStoreDomain,
   upsertShopifyInstall
 } from "@/lib/commerce/core/connections/platform-connection-repo";
-import { encryptPlatformToken } from "@/lib/commerce/core/crypto/token-crypto";
 import { registerWebhooksForShop } from "@/lib/commerce/core/events/webhook-processor-service";
 import { traceLog } from "@/lib/logger";
 
@@ -70,17 +70,30 @@ export async function GET(request: Request) {
     }
 
     const authResult = await exchangeShopifyAuthCode({ shopDomain: resolvedShopDomain, authCode: code });
-    const accessTokenEncrypted = encryptPlatformToken(authResult.accessToken);
+    if (!authResult.refreshToken) {
+      throw new Error("Shopify OAuth did not return a refresh token");
+    }
 
-    await upsertShopifyInstall({
-      externalStoreId: authResult.externalStoreId,
-      storeDomain: authResult.storeDomain,
-      storeDisplayName: authResult.storeDisplayName ?? null,
-      accessTokenEncrypted,
-      scopes: authResult.scopes,
-      acquisitionSource: "shopify_app_store",
-      rawPlatformPayload: authResult.rawPayload
-    });
+    const tokenMeta = (authResult.rawPayload as { token?: { accessExpiresAt?: number; refreshExpiresAt?: number; scope?: string } }).token;
+    if (!tokenMeta?.accessExpiresAt || !tokenMeta.refreshExpiresAt) {
+      throw new Error("Shopify OAuth did not return token expiry metadata");
+    }
+
+    await upsertShopifyInstall(
+      buildUpsertPayloadFromAuthResult({
+        externalStoreId: authResult.externalStoreId,
+        storeDomain: authResult.storeDomain,
+        storeDisplayName: authResult.storeDisplayName ?? null,
+        accessToken: authResult.accessToken,
+        refreshToken: authResult.refreshToken,
+        scopes: authResult.scopes,
+        scopeHeader: tokenMeta.scope,
+        accessExpiresAt: tokenMeta.accessExpiresAt,
+        refreshExpiresAt: tokenMeta.refreshExpiresAt,
+        shopPayload: (authResult.rawPayload as { shop?: unknown }).shop,
+        acquisitionSource: "shopify_app_store"
+      })
+    );
 
     try {
       await registerWebhooksForShop(resolvedShopDomain);

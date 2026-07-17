@@ -11,6 +11,7 @@ export type UpsertShopifyInstallInput = {
   storeDomain: string;
   storeDisplayName: string | null;
   accessTokenEncrypted: Buffer;
+  refreshTokenEncrypted: Buffer;
   scopes: string[];
   acquisitionSource: CommerceAcquisitionSource;
   rawPlatformPayload?: unknown;
@@ -57,6 +58,7 @@ export async function upsertShopifyInstall(
        install_status,
        auth_type,
        access_token_encrypted,
+       refresh_token_encrypted,
        scopes_json,
        acquisition_source,
        billing_source,
@@ -64,7 +66,7 @@ export async function upsertShopifyInstall(
        installed_at,
        raw_platform_payload_json
      ) VALUES (
-       NULL, 'shopify', ?, ?, ?, 'installed', 'oauth', ?, ?, ?, 'none', 'not_required', NOW(), ?
+       NULL, 'shopify', ?, ?, ?, 'installed', 'oauth', ?, ?, ?, ?, 'none', 'not_required', NOW(), ?
      )
      ON DUPLICATE KEY UPDATE
        store_domain = VALUES(store_domain),
@@ -72,6 +74,7 @@ export async function upsertShopifyInstall(
        install_status = 'installed',
        auth_type = 'oauth',
        access_token_encrypted = VALUES(access_token_encrypted),
+       refresh_token_encrypted = VALUES(refresh_token_encrypted),
        scopes_json = VALUES(scopes_json),
        acquisition_source = VALUES(acquisition_source),
        uninstalled_at = NULL,
@@ -83,6 +86,7 @@ export async function upsertShopifyInstall(
       input.storeDomain,
       input.storeDisplayName,
       input.accessTokenEncrypted,
+      input.refreshTokenEncrypted,
       scopesJson,
       input.acquisitionSource,
       rawPayloadJson
@@ -94,6 +98,36 @@ export async function upsertShopifyInstall(
     throw new Error("Failed to load connection after upsert");
   }
   return row.commerce_platform_connection_pk;
+}
+
+export type UpdateShopifyOAuthTokensInput = {
+  connectionId: number;
+  accessTokenEncrypted: Buffer;
+  refreshTokenEncrypted: Buffer;
+  scopes?: string[];
+  rawPlatformPayload?: unknown;
+};
+
+export async function updateShopifyOAuthTokens(input: UpdateShopifyOAuthTokensInput): Promise<void> {
+  const scopesJson = input.scopes ? JSON.stringify(input.scopes) : null;
+  const rawPayloadJson = input.rawPlatformPayload ? JSON.stringify(input.rawPlatformPayload) : null;
+
+  await commerceQuery(
+    `UPDATE ${COMMERCE_TABLES.platformConnection}
+     SET access_token_encrypted = ?,
+         refresh_token_encrypted = ?,
+         scopes_json = COALESCE(?, scopes_json),
+         raw_platform_payload_json = COALESCE(?, raw_platform_payload_json),
+         updated_on = NOW()
+     WHERE commerce_platform_connection_pk = ?`,
+    [
+      input.accessTokenEncrypted,
+      input.refreshTokenEncrypted,
+      scopesJson,
+      rawPayloadJson,
+      input.connectionId
+    ]
+  );
 }
 
 export type ConnectionStatusSummary = {

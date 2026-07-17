@@ -14,6 +14,7 @@ import {
   applyShopifySubscriptionWebhook,
   markBillingCancelledOnUninstall
 } from "@/lib/commerce/core/billing/billing-service";
+import { ensureFreshShopifyConnection } from "@/lib/commerce/adapters/shopify/shopify-token-service";
 import { buildAdapterContextFromConnection } from "@/lib/commerce/core/connections/adapter-context";
 import {
   findConnectionByStoreDomain,
@@ -48,7 +49,8 @@ export async function registerWebhooksForShop(shopDomain: string): Promise<void>
     return;
   }
 
-  const context = buildAdapterContextFromConnection(connection);
+  const freshConnection = await ensureFreshShopifyConnection(connection);
+  const context = buildAdapterContextFromConnection(freshConnection);
   const config = getShopifyEnvConfig();
   const callbackUrl = `${config.publicOrigin}/api/commerce/shopify/webhooks`;
 

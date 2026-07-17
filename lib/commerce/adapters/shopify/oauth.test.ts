@@ -120,7 +120,13 @@ describe("exchangeShopifyAuthCode", () => {
       .mockResolvedValueOnce({
         ok: true,
         text: async () =>
-          JSON.stringify({ access_token: "shpat_test", scope: "read_products" })
+          JSON.stringify({
+            access_token: "shpat_test",
+            scope: "read_products",
+            expires_in: 3600,
+            refresh_token: "shprt_test",
+            refresh_token_expires_in: 7776000
+          })
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -144,6 +150,7 @@ describe("exchangeShopifyAuthCode", () => {
     });
 
     expect(result.accessToken).toBe("shpat_test");
+    expect(result.refreshToken).toBe("shprt_test");
     expect(result.externalStoreId).toBe("12345");
     expect(result.scopes).toEqual(["read_products"]);
 
@@ -154,6 +161,7 @@ describe("exchangeShopifyAuthCode", () => {
     });
     expect(String(tokenInit.body)).toContain("client_id=test-api-key");
     expect(String(tokenInit.body)).toContain("code=auth-code");
+    expect(String(tokenInit.body)).toContain("expiring=1");
   });
 
   it("surfaces Shopify token exchange error details", async () => {

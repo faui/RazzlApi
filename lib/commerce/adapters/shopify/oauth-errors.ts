@@ -13,7 +13,9 @@ export type OAuthCallbackFailure = {
 export function mapOAuthCallbackFailure(error: unknown): OAuthCallbackFailure {
   if (error instanceof CommerceAdapterError) {
     const status =
-      error.code === "TOKEN_EXCHANGE_FAILED" || error.code === "SHOP_FETCH_FAILED"
+      error.code === "TOKEN_EXCHANGE_FAILED" ||
+      error.code === "TOKEN_REFRESH_FAILED" ||
+      error.code === "SHOP_FETCH_FAILED"
         ? 502
         : 500;
     return {

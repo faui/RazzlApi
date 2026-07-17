@@ -151,6 +151,18 @@ export type ExchangeAuthCodeInput = {
 export type ShopifyAccessTokenResponse = {
   access_token: string;
   scope?: string;
+  expires_in?: number;
+  refresh_token?: string;
+  refresh_token_expires_in?: number;
+};
+
+export type ShopifyOfflineTokenResult = {
+  accessToken: string;
+  refreshToken: string;
+  scopes: string[];
+  accessTokenExpiresAt: number;
+  refreshTokenExpiresAt: number;
+  scopeHeader?: string;
 };
 
 function formatShopifyOAuthErrorBody(rawBody: string): string {
@@ -184,7 +196,8 @@ export async function exchangeShopifyAuthCode(
   const tokenRequestBody = new URLSearchParams({
     client_id: config.apiKey,
     client_secret: config.apiSecret,
-    code: input.authCode
+    code: input.authCode,
+    expiring: "1"
   });
 
   const response = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
@@ -228,21 +241,113 @@ export async function exchangeShopifyAuthCode(
     );
   }
 
+  if (!body.refresh_token || !body.expires_in || !body.refresh_token_expires_in) {
+    throw new CommerceAdapterError(
+      "TOKEN_EXCHANGE_FAILED",
+      "Shopify token exchange response missing expiring offline token fields (refresh_token, expires_in, refresh_token_expires_in)",
+      false,
+      body
+    );
+  }
+
+  const tokenResult = parseShopifyOfflineTokenResponse(body);
+  const shop = await fetchShopifyShopIdentity(shopDomain, tokenResult.accessToken);
+
+  return {
+    accessToken: tokenResult.accessToken,
+    refreshToken: tokenResult.refreshToken,
+    scopes: tokenResult.scopes,
+    externalStoreId: shop.externalStoreId,
+    storeDomain: shop.storeDomain,
+    storeDisplayName: shop.storeDisplayName,
+    rawPayload: {
+      token: {
+        scope: tokenResult.scopeHeader ?? "",
+        accessExpiresAt: tokenResult.accessTokenExpiresAt,
+        refreshExpiresAt: tokenResult.refreshTokenExpiresAt
+      },
+      shop: shop.rawPayload
+    }
+  };
+}
+
+function parseShopifyOfflineTokenResponse(body: ShopifyAccessTokenResponse): ShopifyOfflineTokenResult {
   const scopes = (body.scope ?? "")
     .split(",")
     .map((scope) => scope.trim())
     .filter(Boolean);
 
-  const shop = await fetchShopifyShopIdentity(shopDomain, body.access_token);
-
+  const now = Date.now();
   return {
     accessToken: body.access_token,
+    refreshToken: body.refresh_token!,
     scopes,
-    externalStoreId: shop.externalStoreId,
-    storeDomain: shop.storeDomain,
-    storeDisplayName: shop.storeDisplayName,
-    rawPayload: { token: { scope: body.scope ?? "" }, shop: shop.rawPayload }
+    scopeHeader: body.scope,
+    accessTokenExpiresAt: now + (body.expires_in ?? 0) * 1000,
+    refreshTokenExpiresAt: now + (body.refresh_token_expires_in ?? 0) * 1000
   };
+}
+
+/** Refresh an expiring Shopify offline access token. */
+export async function refreshShopifyOfflineAccessToken(
+  shopDomainInput: string,
+  refreshToken: string
+): Promise<ShopifyOfflineTokenResult> {
+  const config = getShopifyEnvConfig();
+  const shopDomain = normalizeShopDomain(shopDomainInput);
+  if (!shopDomain) {
+    throw new CommerceAdapterError("INVALID_SHOP", "Invalid shop domain", false);
+  }
+
+  const tokenRequestBody = new URLSearchParams({
+    client_id: config.apiKey,
+    client_secret: config.apiSecret,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken
+  });
+
+  const response = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json"
+    },
+    body: tokenRequestBody.toString()
+  });
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    const detail = formatShopifyOAuthErrorBody(responseText);
+    throw new CommerceAdapterError(
+      "TOKEN_REFRESH_FAILED",
+      `Shopify token refresh failed (${response.status}): ${detail}`,
+      response.status >= 500 || response.status === 429,
+      responseText
+    );
+  }
+
+  let body: ShopifyAccessTokenResponse;
+  try {
+    body = JSON.parse(responseText) as ShopifyAccessTokenResponse;
+  } catch {
+    throw new CommerceAdapterError(
+      "TOKEN_REFRESH_FAILED",
+      "Shopify token refresh returned invalid JSON",
+      false,
+      responseText
+    );
+  }
+
+  if (!body.access_token || !body.refresh_token || !body.expires_in || !body.refresh_token_expires_in) {
+    throw new CommerceAdapterError(
+      "TOKEN_REFRESH_FAILED",
+      "Shopify token refresh response missing expiring offline token fields",
+      false,
+      body
+    );
+  }
+
+  return parseShopifyOfflineTokenResponse(body);
 }
 
 type ShopifyGraphqlShopResponse = {
