@@ -20,20 +20,85 @@ export type ShopifyShopIdentity = {
 export const SHOPIFY_OAUTH_STATE_COOKIE = "shopify_oauth_state";
 export const SHOPIFY_OAUTH_HOST_COOKIE = "shopify_oauth_host";
 
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+export type OAuthStatePayload = {
+  n: string;
+  shop: string;
+  host: string | null;
+  exp: number;
+};
+
 export type PreparedShopifyOAuthSession = {
   state: string;
   authorizeUrl: string;
 };
 
-/** Generate OAuth state + Shopify authorize URL for a shop domain. */
-export function prepareShopifyOAuthSession(shopDomain: string): PreparedShopifyOAuthSession {
-  const state = generateOAuthState();
-  const authorizeUrl = buildShopifyAuthorizeUrl(shopDomain, state);
-  return { state, authorizeUrl };
-}
-
+/** @deprecated Cookie state is unreliable in embedded iframes — use signed state instead. */
 export function generateOAuthState(): string {
   return randomBytes(16).toString("hex");
+}
+
+/**
+ * Signed OAuth state survives top-level callback redirects without cookies.
+ * Embedded apps set cookies during iframe fetch, which browsers often drop before callback.
+ */
+export function createSignedOAuthState(shopDomain: string, host?: string | null): string {
+  const payload: OAuthStatePayload = {
+    n: randomBytes(16).toString("hex"),
+    shop: shopDomain,
+    host: host ?? null,
+    exp: Date.now() + OAUTH_STATE_TTL_MS
+  };
+  const payloadPart = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = createHmac("sha256", getShopifyEnvConfig().apiSecret)
+    .update(payloadPart)
+    .digest("base64url");
+  return `${payloadPart}.${signature}`;
+}
+
+export function verifySignedOAuthState(state: string, shopDomain: string): OAuthStatePayload | null {
+  const dotIndex = state.lastIndexOf(".");
+  if (dotIndex <= 0) {
+    return null;
+  }
+
+  const payloadPart = state.slice(0, dotIndex);
+  const signature = state.slice(dotIndex + 1);
+  const expected = createHmac("sha256", getShopifyEnvConfig().apiSecret)
+    .update(payloadPart)
+    .digest("base64url");
+
+  try {
+    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  let payload: OAuthStatePayload;
+  try {
+    payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8")) as OAuthStatePayload;
+  } catch {
+    return null;
+  }
+
+  if (!payload.shop || payload.exp < Date.now() || payload.shop !== shopDomain) {
+    return null;
+  }
+
+  return payload;
+}
+
+/** Generate OAuth state + Shopify authorize URL for a shop domain. */
+export function prepareShopifyOAuthSession(
+  shopDomain: string,
+  host?: string | null
+): PreparedShopifyOAuthSession {
+  const state = createSignedOAuthState(shopDomain, host);
+  const authorizeUrl = buildShopifyAuthorizeUrl(shopDomain, state);
+  return { state, authorizeUrl };
 }
 
 /** Build Shopify OAuth authorize URL for offline token install. */

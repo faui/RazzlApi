@@ -1,11 +1,9 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import {
   exchangeShopifyAuthCode,
-  SHOPIFY_OAUTH_HOST_COOKIE,
-  SHOPIFY_OAUTH_STATE_COOKIE,
-  verifyShopifyOAuthHmac
+  verifyShopifyOAuthHmac,
+  verifySignedOAuthState
 } from "@/lib/commerce/adapters/shopify/oauth";
 import { getShopifyEnvConfig, normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
 import { upsertShopifyInstall } from "@/lib/commerce/core/connections/platform-connection-repo";
@@ -26,31 +24,26 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const params = queryParamsFromUrl(url);
 
-  const { code, state, shop, hmac } = params;
+  const { code, state, shop, hmac, host: hostParam } = params;
   if (!code || !state || !shop || !hmac) {
     return NextResponse.json({ ok: false, error: "Missing OAuth parameters" }, { status: 400 });
-  }
-
-  const cookieStore = await cookies();
-  const expectedState = cookieStore.get(SHOPIFY_OAUTH_STATE_COOKIE)?.value;
-  const oauthHost = cookieStore.get(SHOPIFY_OAUTH_HOST_COOKIE)?.value;
-  cookieStore.delete(SHOPIFY_OAUTH_STATE_COOKIE);
-  cookieStore.delete(SHOPIFY_OAUTH_HOST_COOKIE);
-
-  if (!expectedState || expectedState !== state) {
-    traceLog(1, "shopify:oauth:invalid_state", { shop });
-    return NextResponse.json({ ok: false, error: "Invalid OAuth state" }, { status: 403 });
-  }
-
-  const config = getShopifyEnvConfig();
-  if (!verifyShopifyOAuthHmac(params, config.apiSecret)) {
-    traceLog(1, "shopify:oauth:invalid_hmac", { shop });
-    return NextResponse.json({ ok: false, error: "Invalid HMAC" }, { status: 401 });
   }
 
   const shopDomain = normalizeShopDomain(shop);
   if (!shopDomain) {
     return NextResponse.json({ ok: false, error: "Invalid shop domain" }, { status: 400 });
+  }
+
+  const statePayload = verifySignedOAuthState(state, shopDomain);
+  if (!statePayload) {
+    traceLog(1, "shopify:oauth:invalid_state", { shop: shopDomain });
+    return NextResponse.json({ ok: false, error: "Invalid OAuth state" }, { status: 403 });
+  }
+
+  const config = getShopifyEnvConfig();
+  if (!verifyShopifyOAuthHmac(params, config.apiSecret)) {
+    traceLog(1, "shopify:oauth:invalid_hmac", { shop: shopDomain });
+    return NextResponse.json({ ok: false, error: "Invalid HMAC" }, { status: 401 });
   }
 
   try {
@@ -76,6 +69,7 @@ export async function GET(request: Request) {
       });
     }
 
+    const oauthHost = statePayload.host ?? hostParam ?? null;
     const redirectUrl = new URL("/shopify", config.publicOrigin);
     redirectUrl.searchParams.set("shop", shopDomain);
     if (oauthHost) {

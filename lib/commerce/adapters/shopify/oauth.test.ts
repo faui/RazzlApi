@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildShopifyAuthorizeUrl,
+  createSignedOAuthState,
   prepareShopifyOAuthSession,
-  verifyShopifyOAuthHmac
+  verifyShopifyOAuthHmac,
+  verifySignedOAuthState
 } from "@/lib/commerce/adapters/shopify/oauth";
 
 const TEST_ENV = {
@@ -79,10 +81,21 @@ describe("buildShopifyAuthorizeUrl", () => {
     );
   });
 
-  it("prepareShopifyOAuthSession returns state and shop authorize URL", () => {
-    const session = prepareShopifyOAuthSession("demo.myshopify.com");
-    expect(session.state).toMatch(/^[a-f0-9]{32}$/);
+  it("prepareShopifyOAuthSession returns signed state and shop authorize URL", () => {
+    const session = prepareShopifyOAuthSession("demo.myshopify.com", "host-token");
+    expect(session.state).toContain(".");
     expect(session.authorizeUrl).toContain("https://demo.myshopify.com/admin/oauth/authorize");
-    expect(session.authorizeUrl).toContain(`state=${session.state}`);
+    expect(session.authorizeUrl).toContain(`state=${encodeURIComponent(session.state)}`);
+
+    const verified = verifySignedOAuthState(session.state, "demo.myshopify.com");
+    expect(verified?.shop).toBe("demo.myshopify.com");
+    expect(verified?.host).toBe("host-token");
+  });
+
+  it("verifySignedOAuthState rejects tampered or expired state", () => {
+    const state = createSignedOAuthState("demo.myshopify.com");
+    expect(verifySignedOAuthState(state, "demo.myshopify.com")).not.toBeNull();
+    expect(verifySignedOAuthState(`${state}x`, "demo.myshopify.com")).toBeNull();
+    expect(verifySignedOAuthState(state, "other.myshopify.com")).toBeNull();
   });
 });

@@ -1,14 +1,7 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import {
-  prepareShopifyOAuthSession,
-  SHOPIFY_OAUTH_HOST_COOKIE,
-  SHOPIFY_OAUTH_STATE_COOKIE
-} from "@/lib/commerce/adapters/shopify/oauth";
+import { prepareShopifyOAuthSession } from "@/lib/commerce/adapters/shopify/oauth";
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
-
-const OAUTH_STATE_MAX_AGE = 600;
 
 function wantsJsonResponse(request: Request, url: URL): boolean {
   if (url.searchParams.get("format") === "json") {
@@ -16,33 +9,6 @@ function wantsJsonResponse(request: Request, url: URL): boolean {
   }
   const accept = request.headers.get("accept") ?? "";
   return accept.includes("application/json");
-}
-
-async function beginOAuthSession(
-  shopDomain: string,
-  host: string | null
-): Promise<{ authorizeUrl: string }> {
-  const { state, authorizeUrl } = prepareShopifyOAuthSession(shopDomain);
-  const cookieStore = await cookies();
-  cookieStore.set(SHOPIFY_OAUTH_STATE_COOKIE, state, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: OAUTH_STATE_MAX_AGE,
-    path: "/"
-  });
-
-  if (host) {
-    cookieStore.set(SHOPIFY_OAUTH_HOST_COOKIE, host, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: OAUTH_STATE_MAX_AGE,
-      path: "/"
-    });
-  }
-
-  return { authorizeUrl };
 }
 
 /** Start Shopify OAuth install — redirect merchant to authorize URL. */
@@ -59,7 +25,7 @@ export async function GET(request: Request) {
   }
 
   const host = url.searchParams.get("host");
-  const { authorizeUrl } = await beginOAuthSession(shopDomain, host);
+  const { authorizeUrl } = prepareShopifyOAuthSession(shopDomain, host);
 
   if (wantsJsonResponse(request, url)) {
     return NextResponse.json({ ok: true, authorizeUrl });
