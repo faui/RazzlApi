@@ -135,7 +135,6 @@ describe("exchangeShopifyAuthCode", () => {
             data: {
               shop: {
                 id: "gid://shopify/Shop/12345",
-                legacyResourceId: "12345",
                 name: "Demo Shop",
                 myshopifyDomain: "demo.myshopify.com"
               }
@@ -212,6 +211,31 @@ describe("fetchShopifyShopIdentity", () => {
     await expect(fetchShopifyShopIdentity("demo.myshopify.com", "token")).rejects.toMatchObject({
       code: "SHOP_FETCH_FAILED",
       message: expect.stringContaining("Access denied")
+    });
+  });
+
+  it("parses externalStoreId from shop GID", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            data: {
+              shop: {
+                id: "gid://shopify/Shop/67890",
+                name: "Demo Shop",
+                myshopifyDomain: "demo.myshopify.com"
+              }
+            }
+          })
+      })
+    );
+
+    await expect(fetchShopifyShopIdentity("demo.myshopify.com", "token")).resolves.toMatchObject({
+      externalStoreId: "67890",
+      storeDomain: "demo.myshopify.com",
+      storeDisplayName: "Demo Shop"
     });
   });
 });

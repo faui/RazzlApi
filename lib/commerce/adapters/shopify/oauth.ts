@@ -445,13 +445,17 @@ type ShopifyGraphqlShopResponse = {
   data?: {
     shop?: {
       id: string;
-      legacyResourceId: string;
       name: string;
       myshopifyDomain: string;
     };
   };
   errors?: Array<{ message: string }>;
 };
+
+function parseShopifyLegacyResourceId(gid: string): string | null {
+  const match = /^gid:\/\/shopify\/[^/]+\/(\d+)$/.exec(gid.trim());
+  return match?.[1] ?? null;
+}
 
 /** Fetch shop identity via Admin GraphQL after token exchange. */
 export async function fetchShopifyShopIdentity(
@@ -469,7 +473,7 @@ export async function fetchShopifyShopIdentity(
         Accept: "application/json"
       },
       body: JSON.stringify({
-        query: "query { shop { id legacyResourceId name myshopifyDomain } }"
+        query: "query { shop { id name myshopifyDomain } }"
       })
     }
   );
@@ -506,7 +510,8 @@ export async function fetchShopifyShopIdentity(
   }
 
   const shop = payload.data?.shop;
-  if (!shop?.legacyResourceId) {
+  const externalStoreId = shop?.id ? parseShopifyLegacyResourceId(shop.id) : null;
+  if (!externalStoreId) {
     throw new CommerceAdapterError(
       "SHOP_FETCH_FAILED",
       "Shopify shop identity response missing shop data",
@@ -516,7 +521,7 @@ export async function fetchShopifyShopIdentity(
   }
 
   return {
-    externalStoreId: shop.legacyResourceId,
+    externalStoreId,
     storeDomain: shop.myshopifyDomain ?? shopDomain,
     storeDisplayName: shop.name ?? null,
     rawPayload: shop
