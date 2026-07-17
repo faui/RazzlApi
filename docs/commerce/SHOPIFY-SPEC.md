@@ -1,6 +1,6 @@
 # Shopify Adapter Specification
 
-**Status:** Slice 0 — specification only, not implemented  
+**Status:** Implemented through Slice 12 — see expiring token architecture below  
 **Scope:** Shopify-specific layer on top of Commerce Integration Core
 
 ## Positioning
@@ -43,14 +43,16 @@ Hosting options (decided — OQ-030):
 1. Merchant clicks Install in Shopify App Store or custom install URL
 2. Redirect to Shopify OAuth authorize URL with requested scopes
 3. Shopify redirects to app callback with `code` + `shop` + `hmac`
-4. App validates HMAC, exchanges code for offline access token
+4. App validates HMAC, exchanges code for **expiring offline access token** (`expiring=1`)
 5. Create/update `commerce_platform_connection`:
    - `platform_type = shopify`
    - `external_store_id` = Shopify shop ID
    - `store_domain` = `{shop}.myshopify.com`
    - `install_status = installed`
    - `acquisition_source = shopify_app_store` (if App Store) or `direct`
-   - `access_token_encrypted` = encrypted token
+   - `access_token_encrypted` = encrypted access token
+   - `refresh_token_encrypted` = encrypted refresh token (required for Shopify)
+   - `raw_platform_payload_json.token` = `{ accessExpiresAt, refreshExpiresAt, scope }` (epoch ms)
 6. Register webhooks (Slice 11)
 7. Redirect merchant to embedded app home (onboarding)
 
@@ -66,8 +68,22 @@ Hosting options (decided — OQ-030):
 
 ### Session types
 
-- **Offline token:** stored encrypted on `commerce_platform_connection` for background sync
-- **Online token / session:** embedded admin session (if needed for user-scoped actions)
+- **Expiring offline token pair:** stored encrypted on `commerce_platform_connection` for sync, billing, webhook registration. Access token ~1h; refresh token ~90d (renewed when merchant opens embedded app).
+- **Embedded session token:** App Bridge `idToken()` exchanged via `POST /api/commerce/shopify/session-token/exchange` to refresh offline tokens without full OAuth redirect.
+
+### Token resolver (required before Admin API)
+
+All Shopify Admin API calls must go through `resolveShopifyConnection()` in `lib/commerce/adapters/shopify/shopify-token-service.ts`:
+
+1. Derive `tokenStatus`: `ok` | `refresh_needed` | `reauth_required`
+2. If stale, refresh under MySQL row lock (`SELECT ... FOR UPDATE`)
+3. Return `{ connection, context }` with decrypted access token
+
+Permanent refresh failure sets `install_status = error` and surfaces **Reconnect store** in embedded UI.
+
+### Connection API token health
+
+`GET /api/commerce/shopify/connection` includes `tokenStatus` for embedded admin UX.
 
 ## Store / account connection to Razzl tenant
 

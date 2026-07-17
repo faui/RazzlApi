@@ -94,7 +94,10 @@ if (shopArg) {
     if (!response.ok || body.ok !== true) {
       throw new Error(body.error ?? `HTTP ${response.status}`);
     }
-    console.log(`      install=${body.installStatus ?? "none"} tenantLinked=${body.tenantLinked ?? false}`);
+    console.log(`      install=${body.installStatus ?? "none"} tenantLinked=${body.tenantLinked ?? false} tokenStatus=${body.tokenStatus ?? "unknown"}`);
+    if (!body.tokenStatus) {
+      throw new Error("Connection response missing tokenStatus");
+    }
   });
 
   await run(`billing status (${shop})`, async () => {

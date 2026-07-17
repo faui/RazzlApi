@@ -155,3 +155,50 @@ export function resolveEmbeddedHost(initialHost: string | null): string | null {
 
   return window.shopify?.config?.host ?? null;
 }
+
+/** Read App Bridge session token (id_token) when embedded admin is ready. */
+export async function getAppBridgeSessionToken(): Promise<string | null> {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const bridgeReady = await whenAppBridgeReady();
+  if (!bridgeReady) {
+    return null;
+  }
+
+  try {
+    const token = await window.shopify?.idToken?.();
+    return token?.trim() ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Silently refresh expiring offline tokens using the embedded session token. */
+export async function exchangeEmbeddedSessionToken(
+  apiPublicOrigin: string,
+  shop: string
+): Promise<boolean> {
+  const sessionToken = await getAppBridgeSessionToken();
+  if (!sessionToken) {
+    return false;
+  }
+
+  const origin = apiPublicOrigin.replace(/\/$/, "");
+  const response = await fetch(`${origin}/api/commerce/shopify/session-token/exchange`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({ shop, sessionToken })
+  });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const data = (await response.json()) as { ok?: boolean };
+  return data.ok === true;
+}

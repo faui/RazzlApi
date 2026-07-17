@@ -73,6 +73,24 @@ export function ShopifyConnectionCard({
     );
   }
 
+  if (status.tokenStatus === "reauth_required") {
+    return (
+      <Card>
+        <BlockStack gap="400">
+          <Banner tone="critical" title="Store reconnection required">
+            Your Shopify authorization expired. Reconnect <strong>{shop}</strong> to continue syncing
+            products and billing.
+          </Banner>
+          <InlineStack align="start">
+            <Button variant="primary" loading={oauthStarting} onClick={() => onConnectStore?.()}>
+              Reconnect store
+            </Button>
+          </InlineStack>
+        </BlockStack>
+      </Card>
+    );
+  }
+
   const linked = status.tenantLinked;
 
   return (

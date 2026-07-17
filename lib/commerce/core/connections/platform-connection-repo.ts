@@ -1,6 +1,8 @@
 import { commerceQuery } from "@/lib/commerce/core/db/query";
+import { commerceQueryOnConnection, commerceTransaction } from "@/lib/commerce/core/db/transaction";
 import { COMMERCE_TABLES } from "@/lib/commerce/types/enums";
 import type { CommercePlatformConnectionRow } from "@/lib/commerce/types/commerce-platform-connection";
+import type { ShopifyTokenStatus } from "@/lib/commerce/adapters/shopify/shopify-token-service";
 import type {
   CommerceAcquisitionSource,
   CommerceInstallStatus
@@ -108,6 +110,14 @@ export type UpdateShopifyOAuthTokensInput = {
   rawPlatformPayload?: unknown;
 };
 
+export type RefreshShopifyConnectionTokensLockedInput = {
+  connectionId: number;
+  isAccessTokenFresh: (connection: CommercePlatformConnectionRow) => boolean;
+  performRefresh: (
+    connection: CommercePlatformConnectionRow
+  ) => Promise<Omit<UpdateShopifyOAuthTokensInput, "connectionId">>;
+};
+
 export async function updateShopifyOAuthTokens(input: UpdateShopifyOAuthTokensInput): Promise<void> {
   const scopesJson = input.scopes ? JSON.stringify(input.scopes) : null;
   const rawPayloadJson = input.rawPlatformPayload ? JSON.stringify(input.rawPlatformPayload) : null;
@@ -130,6 +140,108 @@ export async function updateShopifyOAuthTokens(input: UpdateShopifyOAuthTokensIn
   );
 }
 
+export async function refreshShopifyConnectionTokensLocked(
+  input: RefreshShopifyConnectionTokensLockedInput
+): Promise<CommercePlatformConnectionRow> {
+  return commerceTransaction(async (connection) => {
+    const lockedRows = await commerceQueryOnConnection<CommercePlatformConnectionRow[]>(
+      connection,
+      `SELECT * FROM ${COMMERCE_TABLES.platformConnection}
+       WHERE commerce_platform_connection_pk = ?
+       FOR UPDATE`,
+      [input.connectionId]
+    );
+    const locked = lockedRows[0];
+    if (!locked) {
+      throw new Error("CONNECTION_NOT_FOUND");
+    }
+
+    if (input.isAccessTokenFresh(locked)) {
+      return locked;
+    }
+
+    const refreshed = await input.performRefresh(locked);
+    const scopesJson = refreshed.scopes ? JSON.stringify(refreshed.scopes) : null;
+    const rawPayloadJson = refreshed.rawPlatformPayload
+      ? JSON.stringify(refreshed.rawPlatformPayload)
+      : null;
+
+    await commerceQueryOnConnection(
+      connection,
+      `UPDATE ${COMMERCE_TABLES.platformConnection}
+       SET access_token_encrypted = ?,
+           refresh_token_encrypted = ?,
+           scopes_json = COALESCE(?, scopes_json),
+           raw_platform_payload_json = COALESCE(?, raw_platform_payload_json),
+           install_status = CASE
+             WHEN install_status = 'error' THEN 'installed'
+             ELSE install_status
+           END,
+           updated_on = NOW()
+       WHERE commerce_platform_connection_pk = ?`,
+      [
+        refreshed.accessTokenEncrypted,
+        refreshed.refreshTokenEncrypted,
+        scopesJson,
+        rawPayloadJson,
+        input.connectionId
+      ]
+    );
+
+    const updatedRows = await commerceQueryOnConnection<CommercePlatformConnectionRow[]>(
+      connection,
+      `SELECT * FROM ${COMMERCE_TABLES.platformConnection}
+       WHERE commerce_platform_connection_pk = ?
+       LIMIT 1`,
+      [input.connectionId]
+    );
+
+    const updated = updatedRows[0];
+    if (!updated) {
+      throw new Error("Failed to load connection after token refresh");
+    }
+
+    return updated;
+  });
+}
+
+export async function markConnectionInstallError(connectionId: number): Promise<void> {
+  await commerceQuery(
+    `UPDATE ${COMMERCE_TABLES.platformConnection}
+     SET install_status = 'error',
+         updated_on = NOW()
+     WHERE commerce_platform_connection_pk = ?`,
+    [connectionId]
+  );
+}
+
+export async function persistShopifyOAuthTokens(input: UpdateShopifyOAuthTokensInput): Promise<void> {
+  const scopesJson = input.scopes ? JSON.stringify(input.scopes) : null;
+  const rawPayloadJson = input.rawPlatformPayload ? JSON.stringify(input.rawPlatformPayload) : null;
+
+  await commerceQuery(
+    `UPDATE ${COMMERCE_TABLES.platformConnection}
+     SET access_token_encrypted = ?,
+         refresh_token_encrypted = ?,
+         scopes_json = COALESCE(?, scopes_json),
+         raw_platform_payload_json = COALESCE(?, raw_platform_payload_json),
+         install_status = CASE
+           WHEN install_status IN ('error', 'uninstalled') THEN 'installed'
+           ELSE install_status
+         END,
+         uninstalled_at = NULL,
+         updated_on = NOW()
+     WHERE commerce_platform_connection_pk = ?`,
+    [
+      input.accessTokenEncrypted,
+      input.refreshTokenEncrypted,
+      scopesJson,
+      rawPayloadJson,
+      input.connectionId
+    ]
+  );
+}
+
 export type ConnectionStatusSummary = {
   connectionId: number;
   storeDomain: string;
@@ -140,6 +252,7 @@ export type ConnectionStatusSummary = {
   tenantName: string | null;
   connectedAt: string | null;
   installedAt: string | null;
+  tokenStatus?: ShopifyTokenStatus;
 };
 
 export async function linkConnectionToTenant(

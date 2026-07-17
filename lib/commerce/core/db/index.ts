@@ -5,4 +5,5 @@ export {
   registerCommerceDbPoolShutdownHooks
 } from "./pool";
 export { commerceQuery, pingCommerceDb } from "./query";
+export { commerceQueryOnConnection, commerceTransaction } from "./transaction";
 

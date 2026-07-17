@@ -39,7 +39,8 @@ export async function GET(request: Request) {
       tenantPk: status.tenantPk,
       tenantName: status.tenantName,
       connectedAt: status.connectedAt,
-      installedAt: status.installedAt
+      installedAt: status.installedAt,
+      tokenStatus: status.tokenStatus
     });
   } catch (error) {
     if (error instanceof CommerceConnectionError) {

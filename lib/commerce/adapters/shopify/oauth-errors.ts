@@ -1,4 +1,5 @@
 import { CommerceAdapterError } from "@/lib/commerce/adapters/types";
+import { ShopifyTokenError } from "@/lib/commerce/adapters/shopify/shopify-token-service";
 
 export type OAuthCallbackFailure = {
   status: number;
@@ -11,6 +12,19 @@ export type OAuthCallbackFailure = {
 };
 
 export function mapOAuthCallbackFailure(error: unknown): OAuthCallbackFailure {
+  if (error instanceof ShopifyTokenError) {
+    const status = error.code === "TOKEN_REFRESH_TRANSIENT" ? 503 : 502;
+    return {
+      status,
+      body: {
+        ok: false,
+        error: error.message,
+        code: error.code,
+        retryable: error.retryable
+      }
+    };
+  }
+
   if (error instanceof CommerceAdapterError) {
     const status =
       error.code === "TOKEN_EXCHANGE_FAILED" ||

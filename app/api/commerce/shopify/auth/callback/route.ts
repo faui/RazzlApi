@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { mapOAuthCallbackFailure } from "@/lib/commerce/adapters/shopify/oauth-errors";
-import { buildUpsertPayloadFromAuthResult } from "@/lib/commerce/adapters/shopify/shopify-token-service";
+import {
+  buildUpsertPayloadFromAuthResult,
+  hasValidExpiringTokenPair
+} from "@/lib/commerce/adapters/shopify/shopify-token-service";
 import {
   exchangeShopifyAuthCode,
   verifyShopifyOAuthHmac,
@@ -65,7 +68,11 @@ export async function GET(request: Request) {
 
   try {
     const existing = await findConnectionByStoreDomain(resolvedShopDomain);
-    if (existing?.install_status === "installed" || existing?.install_status === "connected") {
+    if (
+      existing &&
+      (existing.install_status === "installed" || existing.install_status === "connected") &&
+      hasValidExpiringTokenPair(existing)
+    ) {
       return buildSuccessRedirect();
     }
 

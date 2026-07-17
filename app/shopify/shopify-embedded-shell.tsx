@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 
 import { ShopifyEmbeddedHome } from "@/app/shopify/shopify-embedded-home";
 import {
+  exchangeEmbeddedSessionToken,
   resolveEmbeddedHost,
   resolveEmbeddedShopDomain,
   whenAppBridgeReady
 } from "@/app/shopify/shopify-oauth";
 import type { ConnectionStatusSummary } from "@/lib/commerce/core/connections/platform-connection-repo";
 import type { CommerceInstallStatus } from "@/lib/commerce/types/enums";
+import type { ShopifyTokenStatus } from "@/lib/commerce/adapters/shopify/shopify-token-service";
 
 type Props = {
   initialShop: string | null;
@@ -30,6 +32,7 @@ type ConnectionApiResponse = {
   tenantName?: string | null;
   connectedAt?: string | null;
   installedAt?: string | null;
+  tokenStatus?: ShopifyTokenStatus;
 };
 
 function mapConnectionResponse(data: ConnectionApiResponse): ConnectionStatusSummary | null {
@@ -49,7 +52,8 @@ function mapConnectionResponse(data: ConnectionApiResponse): ConnectionStatusSum
     tenantPk: data.tenantPk ?? null,
     tenantName: data.tenantName ?? null,
     connectedAt: data.connectedAt ?? null,
-    installedAt: data.installedAt ?? null
+    installedAt: data.installedAt ?? null,
+    tokenStatus: data.tokenStatus ?? "ok"
   };
 }
 
@@ -103,7 +107,25 @@ export function ShopifyEmbeddedShell({
         );
         const data = (await response.json()) as ConnectionApiResponse;
         if (cancelled) return;
-        setStatus(mapConnectionResponse(data));
+        const mapped = mapConnectionResponse(data);
+        setStatus(mapped);
+
+        if (
+          mapped &&
+          mapped.installStatus !== "uninstalled" &&
+          (mapped.tokenStatus === "refresh_needed" || mapped.tokenStatus === "ok")
+        ) {
+          await exchangeEmbeddedSessionToken(apiPublicOrigin, shop);
+          if (cancelled) return;
+
+          const refreshResponse = await fetch(
+            `${apiPublicOrigin}/api/commerce/shopify/connection?shop=${encodeURIComponent(shop)}`
+          );
+          const refreshData = (await refreshResponse.json()) as ConnectionApiResponse;
+          if (!cancelled) {
+            setStatus(mapConnectionResponse(refreshData));
+          }
+        }
       } catch {
         if (!cancelled) {
           setStatus(null);

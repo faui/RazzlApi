@@ -43,6 +43,9 @@ npm run test:commerce:shopify # proposed — Shopify adapter fixtures
 
 - [ ] OAuth callback HMAC validation (valid + invalid)
 - [ ] Token storage encryption path
+- [ ] Expiring offline token refresh under row lock (`resolveShopifyConnection`)
+- [ ] Session token exchange on embedded app mount
+- [ ] `tokenStatus` on connection API (`ok` / `refresh_needed` / `reauth_required`)
 - [ ] Product sync idempotency (same product twice → one row)
 - [ ] Uninstall webhook deactivates connection
 - [ ] Mandatory compliance webhooks acknowledge correctly
@@ -58,7 +61,7 @@ npm run test:commerce:shopify # proposed — Shopify adapter fixtures
 |-------|---------------|
 | 1 | Migration apply; UNIQUE constraints |
 | 2 | Shopify product normalization golden files |
-| 3 | OAuth HMAC; encrypted token roundtrip |
+| 3 | OAuth HMAC; encrypted token roundtrip; expiring token refresh + reauth |
 | 4 | Tenant link authorized/unauthorized |
 | 5 | Sync idempotency; archived product marking |
 | 6 | Mapping CRUD; one-mapping-per-external-product |

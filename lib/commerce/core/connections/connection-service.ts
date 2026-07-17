@@ -1,3 +1,7 @@
+import {
+  deriveTokenStatus,
+  type ShopifyTokenStatus
+} from "@/lib/commerce/adapters/shopify/shopify-token-service";
 import { normalizeShopDomain } from "@/lib/commerce/config/shopify-env";
 import { createCommerceLinkToken, verifyCommerceLinkToken } from "@/lib/commerce/core/connections/link-token";
 import {
@@ -128,5 +132,19 @@ export async function getShopConnectionStatus(shopParam: string): Promise<Connec
   if (!shop) {
     throw new CommerceConnectionError("INVALID_SHOP", "Invalid shop domain");
   }
-  return getConnectionStatusByStoreDomain(shop);
+
+  const status = await getConnectionStatusByStoreDomain(shop);
+  if (!status) {
+    return null;
+  }
+
+  const connection = await findConnectionByStoreDomain(shop);
+  const tokenStatus: ShopifyTokenStatus = connection
+    ? deriveTokenStatus(connection)
+    : "reauth_required";
+
+  return {
+    ...status,
+    tokenStatus
+  };
 }

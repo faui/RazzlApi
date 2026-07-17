@@ -1,7 +1,7 @@
 import {
-  buildAdapterContextFromConnection,
   getAdapterForConnection
 } from "@/lib/commerce/core/connections/adapter-context";
+import { resolveShopifyConnection } from "@/lib/commerce/adapters/shopify/shopify-token-service";
 import type { CommercePlatformConnectionRow } from "@/lib/commerce/types/commerce-platform-connection";
 import type { CommerceBillingSource } from "@/lib/commerce/types/enums";
 import {
@@ -188,7 +188,7 @@ export async function createShopifyBillingSession(
     throw new CommerceBillingError("NOT_SUPPORTED", "Billing is not supported for this platform");
   }
 
-  const context = buildAdapterContextFromConnection(connection);
+  const { context } = await resolveShopifyConnection(connection);
   const config = getShopifyEnvConfig();
   const returnUrl = buildShopifyBillingReturnUrl(connection.store_domain ?? "", config.publicOrigin);
 

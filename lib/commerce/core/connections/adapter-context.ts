@@ -1,4 +1,7 @@
-import { ensureFreshShopifyConnection } from "@/lib/commerce/adapters/shopify/shopify-token-service";
+import {
+  resolveShopifyConnection,
+  ShopifyTokenError
+} from "@/lib/commerce/adapters/shopify/shopify-token-service";
 import { getAdapter } from "@/lib/commerce/adapters/registry";
 import type { CommerceAdapterContext } from "@/lib/commerce/adapters/types";
 import { decryptPlatformToken } from "@/lib/commerce/core/crypto/token-crypto";
@@ -72,14 +75,16 @@ export async function requireLinkedShopConnection(shop: string): Promise<{
     throw new CommerceSyncError("TENANT_NOT_LINKED", "Link your Razzl Studio account before syncing products");
   }
 
-  const freshConnection = await ensureFreshShopifyConnection(connection);
+  const { connection: resolvedConnection, context } = await resolveShopifyConnection(connection);
 
   return {
-    connection: freshConnection,
+    connection: resolvedConnection,
     status,
-    context: buildAdapterContextFromConnection(freshConnection)
+    context
   };
 }
+
+export { ShopifyTokenError };
 
 export function getAdapterForConnection(connection: CommercePlatformConnectionRow) {
   return getAdapter(connection.platform_type);

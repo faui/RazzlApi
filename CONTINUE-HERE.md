@@ -2,11 +2,11 @@
 
 ## Current status
 
-**Slice 12 started** — App Store readiness checklist + listing docs. **Slice 10** code complete; api-dev smoke validated; webhook URI fix applied (re-deploy required).
+**Slice 12 started** — App Store readiness checklist + listing docs. **Shopify go-live token hardening** implemented (expiring tokens, row-lock refresh, session-token exchange, `tokenStatus` on connection API).
 
 ## Current branch
 
-Merge webhook URI fix + Slice 12 docs to `main`, deploy api-dev, run `shopify app deploy`, then complete manual billing E2E on dev store.
+Merge token hardening + deploy api-dev, run Connect → sync → billing E2E on dev store, then continue Slice 12 App Store prep.
 
 ## Last completed slice
 

@@ -10,6 +10,7 @@ declare global {
       redirect?: {
         remote: (url: string) => void;
       };
+      idToken?: () => Promise<string>;
       toast: {
         show: (message: string, options?: { isError?: boolean; duration?: number }) => void;
       };

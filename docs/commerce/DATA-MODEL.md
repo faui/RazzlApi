@@ -34,7 +34,7 @@ Represents an installed/configured connection between a Razzl tenant and an exte
 | `connected_at` | timestamp | YES | Tenant linked |
 | `uninstalled_at` | timestamp | YES | |
 | `last_synced_at` | timestamp | YES | |
-| `raw_platform_payload_json` | json | YES | Shop metadata snapshot |
+| `raw_platform_payload_json` | json | YES | Shop metadata snapshot; for Shopify also stores token expiry metadata under `.token.accessExpiresAt` / `.token.refreshExpiresAt` (epoch ms) |
 | `created_on` | timestamp | NO | DEFAULT CURRENT_TIMESTAMP |
 | `updated_on` | timestamp | NO | ON UPDATE CURRENT_TIMESTAMP |
 
