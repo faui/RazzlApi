@@ -88,8 +88,11 @@ jobs:
               if .name == $NAME then
                 .image = $IMAGE |
                 .environment = (
-                  ((.environment // []) | map(select(.name != "RAZZL_DEPLOY_ENV")))
-                  + [{name: "RAZZL_DEPLOY_ENV", value: "dev"}]
+                  ((.environment // []) | map(select(.name != "RAZZL_DEPLOY_ENV" and .name != "SHOPIFY_BILLING_TEST")))
+                  + [
+                    {name: "RAZZL_DEPLOY_ENV", value: "dev"},
+                    {name: "SHOPIFY_BILLING_TEST", value: "true"}
+                  ]
                 )
               else .
               end

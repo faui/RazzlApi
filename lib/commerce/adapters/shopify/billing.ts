@@ -8,6 +8,27 @@ import { CommerceAdapterError } from "@/lib/commerce/adapters/types";
 import { shopifyAdminGraphql } from "@/lib/commerce/adapters/shopify/graphql-client";
 import type { CommerceSubscriptionTier } from "@/lib/commerce/core/billing/subscription-tier-catalog";
 
+export function resolveShopifyBillingTestMode(explicit?: boolean): boolean {
+  if (explicit !== undefined) {
+    return explicit;
+  }
+  if (process.env.SHOPIFY_BILLING_TEST === "true") {
+    return true;
+  }
+  return process.env.RAZZL_DEPLOY_ENV === "dev";
+}
+
+function formatTierPriceAmount(tier: CommerceSubscriptionTier): string {
+  const amount = Number(tier.recurringPriceAmount);
+  if (!Number.isFinite(amount)) {
+    throw new CommerceAdapterError(
+      "INVALID_TIER",
+      `Tier ${tier.tierCode} has invalid recurring price`
+    );
+  }
+  return amount.toFixed(2);
+}
+
 type AppSubscriptionCreateResponse = {
   appSubscriptionCreate: {
     userErrors: Array<{ field: string[] | null; message: string }>;
@@ -73,8 +94,8 @@ export async function createShopifyAppSubscription(
   input: CreateBillingSessionInput
 ): Promise<PlatformBillingSession> {
   const interval = toShopifyRecurringInterval(tier.billingInterval, tier.billingIntervalCount);
-  const amount = tier.recurringPriceAmount.toFixed(2);
-  const testMode = input.test ?? process.env.SHOPIFY_BILLING_TEST === "true";
+  const amount = formatTierPriceAmount(tier);
+  const testMode = resolveShopifyBillingTestMode(input.test);
 
   const mutation = `
     mutation AppSubscriptionCreate(

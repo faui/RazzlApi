@@ -73,4 +73,46 @@ describe("createShopifyAppSubscription", () => {
     expect(session.confirmationUrl).toContain("confirm");
     expect(session.chargeId).toBe("gid://shopify/AppSubscription/1");
   });
+
+  it("coerces string tier prices returned from MySQL", async () => {
+    vi.mocked(shopifyAdminGraphql).mockResolvedValue({
+      appSubscriptionCreate: {
+        userErrors: [],
+        confirmationUrl: "https://demo.myshopify.com/admin/charges/confirm",
+        appSubscription: {
+          id: "gid://shopify/AppSubscription/1",
+          status: "PENDING"
+        }
+      }
+    });
+
+    const stringTier = {
+      ...tier,
+      recurringPriceAmount: "12.00" as unknown as number
+    };
+
+    await createShopifyAppSubscription(context, stringTier, {
+      context,
+      planExternalId: tier.tierCode,
+      returnUrl: "https://api-dev.razzl.com/shopify?shop=demo.myshopify.com",
+      test: true
+    });
+
+    expect(shopifyAdminGraphql).toHaveBeenCalledWith(
+      context,
+      expect.any(String),
+      expect.objectContaining({
+        lineItems: [
+          {
+            plan: {
+              appRecurringPricingDetails: {
+                interval: "EVERY_30_DAYS",
+                price: { amount: "12.00", currencyCode: "USD" }
+              }
+            }
+          }
+        ]
+      })
+    );
+  });
 });

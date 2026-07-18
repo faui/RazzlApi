@@ -23,7 +23,8 @@ import {
 } from "@/lib/commerce/core/billing/tenant-subscription-projection";
 import {
   buildShopifyBillingReturnUrl,
-  mapShopifyStatusToPlatformStatus
+  mapShopifyStatusToPlatformStatus,
+  resolveShopifyBillingTestMode
 } from "@/lib/commerce/adapters/shopify/billing";
 import { getShopifyEnvConfig } from "@/lib/commerce/config/shopify-env";
 import { commerceQuery } from "@/lib/commerce/core/db/query";
@@ -196,7 +197,7 @@ export async function createShopifyBillingSession(
     context,
     planExternalId: tier.tierCode,
     returnUrl,
-    test: process.env.SHOPIFY_BILLING_TEST === "true"
+    test: resolveShopifyBillingTestMode()
   });
 
   const billingAccountPk =
