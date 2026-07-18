@@ -110,11 +110,7 @@ export function ShopifyEmbeddedShell({
         const mapped = mapConnectionResponse(data);
         setStatus(mapped);
 
-        if (
-          mapped &&
-          mapped.installStatus !== "uninstalled" &&
-          (mapped.tokenStatus === "refresh_needed" || mapped.tokenStatus === "ok")
-        ) {
+        if (mapped && mapped.installStatus !== "uninstalled" && mapped.tokenStatus === "refresh_needed") {
           await exchangeEmbeddedSessionToken(apiPublicOrigin, shop);
           if (cancelled) return;
 
