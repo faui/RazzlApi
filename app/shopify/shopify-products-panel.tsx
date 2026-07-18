@@ -319,11 +319,18 @@ export function ShopifyProductsPanel({
       });
       const data = (await response.json()) as SyncStatusResponse & {
         error?: string;
+        code?: string;
         stats?: { productsSeen?: number };
       };
       if (!response.ok || !data.ok) {
-        setErrorBanner(data.error ?? "Sync failed");
-        showToast(data.error ?? "Sync failed", { isError: true });
+        const message =
+          data.code === "BILLING_REQUIRED"
+            ? "Approve a Shopify plan in the Billing section before syncing products."
+            : data.code === "TOKEN_REAUTH_REQUIRED"
+              ? "Reconnect your Shopify store, then try sync again."
+              : (data.error ?? "Sync failed");
+        setErrorBanner(message);
+        showToast(message, { isError: true });
       } else {
         showToast(`Sync complete — ${data.stats?.productsSeen ?? 0} products processed`);
       }
