@@ -143,6 +143,7 @@ export function ShopifyProductsPanel({
   const [studioCreateCopilotUrl, setStudioCreateCopilotUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [reloadingProducts, setReloadingProducts] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -168,7 +169,10 @@ export function ShopifyProductsPanel({
     [onProductStatsChange]
   );
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: { refreshing?: boolean }) => {
+    if (options?.refreshing) {
+      setReloadingProducts(true);
+    }
     setErrorBanner(null);
     try {
       const [syncRes, productsRes] = await Promise.all([
@@ -201,6 +205,7 @@ export function ShopifyProductsPanel({
       setErrorBanner("Unable to load product data");
     } finally {
       setLoading(false);
+      setReloadingProducts(false);
     }
   }, [apiPublicOrigin, onCreateCopilotUrl, shop, tenantLinked, updateStats]);
 
@@ -302,7 +307,7 @@ export function ShopifyProductsPanel({
         return;
       }
       showToast(`Refreshed ${data.refreshed ?? 0} copilot snapshot(s)`);
-      await loadData();
+      await loadData({ refreshing: true });
     } catch {
       setErrorBanner("Refresh failed");
     } finally {
@@ -333,8 +338,8 @@ export function ShopifyProductsPanel({
         showToast(message, { isError: true });
       } else {
         showToast(`Sync complete — ${data.stats?.productsSeen ?? 0} products processed`);
+        await loadData({ refreshing: true });
       }
-      await loadData();
     } catch {
       setErrorBanner("Sync failed");
       showToast("Sync failed", { isError: true });
@@ -598,11 +603,16 @@ export function ShopifyProductsPanel({
                 <Button
                   onClick={() => void handleRefreshSnapshots()}
                   loading={refreshing}
-                  disabled={loading}
+                  disabled={loading || reloadingProducts}
                 >
                   Refresh status
                 </Button>
-                <Button variant="primary" onClick={() => void handleSync()} loading={syncing}>
+                <Button
+                  variant="primary"
+                  onClick={() => void handleSync()}
+                  loading={syncing || reloadingProducts}
+                  disabled={syncing || reloadingProducts}
+                >
                   Sync now
                 </Button>
               </InlineStack>
@@ -652,14 +662,24 @@ export function ShopifyProductsPanel({
           </Box>
         ) : null}
 
-        {loading ? (
+        {reloadingProducts ? (
+          <Box paddingInline="400" paddingBlockEnd="300">
+            <Banner tone="info">Updating product list…</Banner>
+          </Box>
+        ) : null}
+
+        {loading || reloadingProducts ? (
           <Box padding="400">
             <SkeletonBodyText lines={6} />
           </Box>
         ) : products.length === 0 ? (
           <EmptyState
             heading="No products imported yet"
-            action={{ content: "Sync now", onAction: () => void handleSync(), loading: syncing }}
+            action={{
+              content: "Sync now",
+              onAction: () => void handleSync(),
+              loading: syncing || reloadingProducts
+            }}
             image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
           >
             <p>Import your Shopify catalog to start mapping copilots.</p>
