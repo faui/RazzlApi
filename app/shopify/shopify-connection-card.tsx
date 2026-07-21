@@ -93,17 +93,43 @@ export function ShopifyConnectionCard({
 
   const linked = status.tenantLinked;
 
+  if (linked) {
+    return (
+      <Card padding="0">
+        <Box padding="400">
+          <InlineStack align="space-between" blockAlign="center" gap="400">
+            <InlineStack gap="300" blockAlign="center" wrap={false}>
+              <Avatar
+                size="md"
+                name={status.storeDisplayName ?? shop}
+                initials={storeInitials(status.storeDisplayName, shop)}
+              />
+              <BlockStack gap="050">
+                <InlineStack gap="150" blockAlign="center">
+                  <Text as="h2" variant="headingMd">
+                    {status.storeDisplayName ?? shop}
+                  </Text>
+                  <Badge tone="success">Connected</Badge>
+                </InlineStack>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  {shop} · {status.tenantName ?? `Razzl account #${status.tenantPk}`}
+                </Text>
+              </BlockStack>
+            </InlineStack>
+            <Link url={RAZZL_MARKETING_URL} target="_blank">
+              About Razzl
+            </Link>
+          </InlineStack>
+        </Box>
+      </Card>
+    );
+  }
+
   return (
     <Card padding="0">
-      {linked ? (
-        <Banner tone="success" title="Store connected to Razzl">
-          Your Shopify store is linked and ready to sync products.
-        </Banner>
-      ) : (
-        <Banner tone="warning" title="Razzl account not linked">
-          Connect your Razzl Studio account to sync products and enable storefront CTAs.
-        </Banner>
-      )}
+      <Banner tone="warning" title="Razzl account not linked">
+        Connect your Razzl Studio account to sync products and publish setup help.
+      </Banner>
 
       <Box padding="400">
         <BlockStack gap="400">
@@ -114,7 +140,7 @@ export function ShopifyConnectionCard({
             <Text as="h2" variant="headingMd">
               Connection
             </Text>
-            {linked ? <Badge tone="success">Live</Badge> : <Badge tone="attention">Action required</Badge>}
+            <Badge tone="attention">Action required</Badge>
           </InlineStack>
 
           <div className="shopify-connection-panel">
@@ -145,11 +171,7 @@ export function ShopifyConnectionCard({
                       Install status
                     </Text>
                     <InlineStack align="start">
-                      {status.installStatus === "connected" ? (
-                        <span className="shopify-connected-pill">{status.installStatus}</span>
-                      ) : (
-                        <Badge tone="info">{status.installStatus}</Badge>
-                      )}
+                      <Badge tone="info">{status.installStatus}</Badge>
                     </InlineStack>
                   </BlockStack>
                   <BlockStack gap="100">
@@ -157,32 +179,13 @@ export function ShopifyConnectionCard({
                       Razzl account
                     </Text>
                     <Text as="p" variant="headingSm">
-                      {linked ? status.tenantName ?? `Tenant #${status.tenantPk}` : "Not linked"}
+                      Not linked
                     </Text>
                   </BlockStack>
                 </BlockStack>
               </InlineGrid>
             </Box>
           </div>
-
-          {linked ? (
-            <BlockStack gap="100">
-              <Text as="p" variant="bodySm" tone="subdued">
-                To disconnect, manage your store in{" "}
-                <Link url="https://studio.razzl.com/app/profile" target="_blank">
-                  Razzl Studio
-                </Link>
-                .
-              </Text>
-              <Text as="p" variant="bodySm" tone="subdued">
-                Learn more about Razzl at{" "}
-                <Link url={RAZZL_MARKETING_URL} target="_blank">
-                  razzl.com
-                </Link>
-                .
-              </Text>
-            </BlockStack>
-          ) : null}
         </BlockStack>
       </Box>
     </Card>

@@ -68,7 +68,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
       error?: string;
     };
     if (!response.ok || !data.ok) {
-      throw new Error(data.error ?? "Unable to load CTA settings");
+      throw new Error(data.error ?? "Unable to load setup-help settings");
     }
     return {
       config: data.config ?? null,
@@ -89,7 +89,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
         setThemeInstructions(result.themeInstructions);
       } catch (error) {
         if (!cancelled) {
-          setErrorBanner(error instanceof Error ? error.message : "Unable to load CTA settings");
+          setErrorBanner(error instanceof Error ? error.message : "Unable to load setup-help settings");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -146,11 +146,12 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
           <InlineStack gap="200" blockAlign="center" wrap={false}>
             <Icon source={ChatIcon} tone="base" />
             <Text as="h2" variant="headingMd">
-              Storefront CTA settings
+              Setup help button
             </Text>
           </InlineStack>
           <Text as="p" tone="subdued" alignment="end">
-            These settings control the Setup Copilot button on your product pages.
+            Choose how setup help looks across your product pages. Product-level visibility stays
+            in the table above.
           </Text>
         </div>
       </Box>
@@ -172,11 +173,11 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                   <InlineGrid columns={{ xs: 1, md: 2 }} gap="400">
                     <BlockStack gap="400">
                       <Text as="h3" variant="headingSm">
-                        Storefront appearance
+                        Button appearance
                       </Text>
                       <div className="shopify-cta-settings-fields">
                         <Select
-                          label="Default button label"
+                          label="Button label"
                           options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
                           value={config.ctaLabelDefault}
                           onChange={(value) =>
@@ -186,7 +187,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                           }
                         />
                         <Select
-                          label="Open Copilot in"
+                          label="Open setup help in"
                           options={[
                             { label: "New tab ↗", value: "new_tab" },
                             { label: "Same tab", value: "same_tab" }
@@ -204,7 +205,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                           }
                         />
                         <Select
-                          label="Style mode"
+                          label="Button style"
                           options={[
                             { label: "Inherit theme", value: "inherit_theme" },
                             { label: "Button", value: "button" },
@@ -259,8 +260,8 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                               {themeInstructions.title}
                             </Text>
                             <Text as="p" variant="bodySm" tone="subdued">
-                              Add the app block once in your product template. Per-product mapping
-                              and CTA status remain in the products table.
+                              Add the app block once to your product template. Then use the products
+                              table above to choose which products show setup help.
                             </Text>
                           </BlockStack>
                           <ol className="shopify-theme-instructions-list">
@@ -292,7 +293,7 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                 <div className="shopify-cta-settings-footer">
                   <InlineStack align="end">
                     <Button submit variant="primary" loading={saving}>
-                      Save CTA settings
+                      Save appearance
                     </Button>
                   </InlineStack>
                 </div>

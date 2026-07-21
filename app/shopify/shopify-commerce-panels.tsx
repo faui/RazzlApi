@@ -86,7 +86,7 @@ export function ShopifyCommercePanels({
 
       {!setupComplete ? (
         <Banner tone="info">
-          Complete setup above to unlock product mapping, storefront CTA settings, and analytics.
+          Complete setup above to connect products, publish setup help, and view customer activity.
         </Banner>
       ) : null}
 

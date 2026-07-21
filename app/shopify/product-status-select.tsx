@@ -1,18 +1,8 @@
 "use client";
 
-import { BlockStack, InlineStack, Text, Tooltip } from "@shopify/polaris";
-import { QuestionCircleIcon } from "@shopify/polaris-icons";
+import { Badge, BlockStack, Button, InlineStack, Text } from "@shopify/polaris";
 
 export type ProductWorkflowStatus = "unmapped" | "mapped" | "cta_on";
-
-const STATUS_OPTIONS: { value: ProductWorkflowStatus; label: string }[] = [
-  { value: "unmapped", label: "Unmapped" },
-  { value: "mapped", label: "Mapped" },
-  { value: "cta_on", label: "Storefront CTA On" }
-];
-
-const CTA_BLOCKED_TOOLTIP =
-  "Map an existing copilot or create a new one for this product before enabling the storefront CTA.";
 
 export function getProductWorkflowStatus(product: {
   productPk: number | null;
@@ -29,41 +19,48 @@ export function getProductWorkflowStatus(product: {
 
 type Props = {
   value: ProductWorkflowStatus;
-  onChange: (next: ProductWorkflowStatus) => void;
+  onToggle: (enabled: boolean) => void;
   inlineError?: string | null;
   productTitle: string;
+  loading?: boolean;
 };
 
-export function ProductStatusSelect({ value, onChange, inlineError, productTitle }: Props) {
+export function ProductExperienceControl({
+  value,
+  onToggle,
+  inlineError,
+  productTitle,
+  loading = false
+}: Props) {
+  if (value === "unmapped") {
+    return (
+      <Text as="span" tone="subdued" variant="bodySm">
+        Connect a copilot first
+      </Text>
+    );
+  }
+
+  const isLive = value === "cta_on";
+
   return (
     <BlockStack gap="100">
-      <select
-        className={`shopify-product-status-select shopify-product-status-select--${value}`}
-        value={value}
-        aria-label={`Status for ${productTitle}`}
-        onChange={(event) => onChange(event.target.value as ProductWorkflowStatus)}
-      >
-        {STATUS_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <InlineStack gap="200" blockAlign="center" wrap={false}>
+        <Badge tone={isLive ? "success" : "info"}>{isLive ? "Live" : "Hidden"}</Badge>
+        <Button
+          size="slim"
+          variant={isLive ? "plain" : "primary"}
+          accessibilityLabel={`${isLive ? "Turn off" : "Turn on"} setup help for ${productTitle}`}
+          loading={loading}
+          disabled={loading}
+          onClick={() => onToggle(!isLive)}
+        >
+          {isLive ? "Turn off" : "Turn on"}
+        </Button>
+      </InlineStack>
       {inlineError ? (
-        <InlineStack gap="100" blockAlign="start" wrap={false}>
-          <Text as="span" tone="critical" variant="bodySm">
-            {inlineError}
-          </Text>
-          <Tooltip content={CTA_BLOCKED_TOOLTIP}>
-            <button
-              type="button"
-              className="shopify-map-first-info"
-              aria-label="Why is storefront CTA unavailable?"
-            >
-              <QuestionCircleIcon />
-            </button>
-          </Tooltip>
-        </InlineStack>
+        <Text as="span" tone="critical" variant="bodySm">
+          {inlineError}
+        </Text>
       ) : null}
     </BlockStack>
   );
