@@ -8,7 +8,6 @@ import {
   Box,
   Button,
   Card,
-  ChoiceList,
   EmptyState,
   Icon,
   IndexTable,
@@ -26,8 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getProductWorkflowStatus,
-  ProductStatusSelect,
-  type ProductWorkflowStatus
+  ProductExperienceControl
 } from "@/app/shopify/product-status-select";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 import { loadProductsAfterSync } from "@/app/shopify/shopify-sync-retry";
@@ -190,7 +188,7 @@ export function ShopifyProductsPanel({
   const [mapMode, setMapMode] = useState<"existing" | "create">("existing");
   const [copilotSearch, setCopilotSearch] = useState("");
   const [selectedCopilotPk, setSelectedCopilotPk] = useState("");
-  const [statusInlineErrors, setStatusInlineErrors] = useState<Record<string, string>>({});
+  const [updatingProducts, setUpdatingProducts] = useState<Set<string>>(() => new Set());
   const [mappingInProgress, setMappingInProgress] = useState<Set<string>>(() =>
     readMappingProgress(shop)
   );
@@ -210,6 +208,15 @@ export function ShopifyProductsPanel({
     },
     [shop]
   );
+
+  function setProductUpdating(externalProductId: string, updating: boolean) {
+    setUpdatingProducts((current) => {
+      const next = new Set(current);
+      if (updating) next.add(externalProductId);
+      else next.delete(externalProductId);
+      return next;
+    });
+  }
 
   const clearCompletedMappingProgress = useCallback(
     (items: ProductRow[]) => {
@@ -353,17 +360,6 @@ export function ShopifyProductsPanel({
   const mappedCount = products.filter((product) => product.productPk).length;
   const lastSynced = formatSyncTime(syncStatus?.latestRun?.completedAt);
 
-  function clearStatusInlineError(externalProductId: string) {
-    setStatusInlineErrors((prev) => {
-      if (!prev[externalProductId]) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[externalProductId];
-      return next;
-    });
-  }
-
   function openMappingModal(product: ProductRow) {
     setMapMode("existing");
     setCopilotSearch("");
@@ -458,118 +454,90 @@ export function ShopifyProductsPanel({
   }
 
   async function handleMap(externalProductId: string, productPk: number) {
+    setProductUpdating(externalProductId, true);
     setErrorBanner(null);
-    const response = await fetch(`${apiPublicOrigin}/api/commerce/mappings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shop, externalProductId, productPk })
-    });
-    const data = (await response.json()) as {
-      ok: boolean;
-      error?: string;
-      code?: string;
-    };
-    if (!response.ok || !data.ok) {
-      const message =
-        data.code === "BILLING_REQUIRED"
-          ? "Approve a Shopify plan in the Billing section before mapping."
-          : (data.error ?? "Mapping failed");
+    try {
+      const response = await fetch(`${apiPublicOrigin}/api/commerce/mappings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop, externalProductId, productPk })
+      });
+      const data = (await response.json()) as {
+        ok: boolean;
+        error?: string;
+        code?: string;
+      };
+      if (!response.ok || !data.ok) {
+        const message =
+          data.code === "BILLING_REQUIRED"
+            ? "Choose a Shopify plan before connecting a copilot."
+            : (data.error ?? "Could not connect this copilot");
+        setErrorBanner(message);
+        showToast(message, { isError: true });
+        return false;
+      }
+      setMappingModal(null);
+      setMappingProgress(externalProductId, false);
+      setSelectedCopilotPk("");
+      setCopilotSearch("");
+      showToast("Copilot connected");
+      await loadData();
+      return true;
+    } catch {
+      const message = "Could not connect this copilot. Check your connection and try again.";
       setErrorBanner(message);
       showToast(message, { isError: true });
       return false;
+    } finally {
+      setProductUpdating(externalProductId, false);
     }
-    setMappingModal(null);
-    setMappingProgress(externalProductId, false);
-    setSelectedCopilotPk("");
-    setCopilotSearch("");
-    clearStatusInlineError(externalProductId);
-    showToast("Copilot mapped");
-    await loadData();
-    return true;
   }
 
   async function handleUnmap(externalProductId: string) {
-    const response = await fetch(
-      `${apiPublicOrigin}/api/commerce/mappings?shop=${encodeURIComponent(shop)}&externalProductId=${encodeURIComponent(externalProductId)}`,
-      { method: "DELETE" }
-    );
-    const data = (await response.json()) as { ok: boolean; error?: string };
-    if (!response.ok || !data.ok) {
-      showToast(data.error ?? "Remove mapping failed", { isError: true });
+    setProductUpdating(externalProductId, true);
+    try {
+      const response = await fetch(
+        `${apiPublicOrigin}/api/commerce/mappings?shop=${encodeURIComponent(shop)}&externalProductId=${encodeURIComponent(externalProductId)}`,
+        { method: "DELETE" }
+      );
+      const data = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !data.ok) {
+        showToast(data.error ?? "Could not disconnect this copilot", { isError: true });
+        return false;
+      }
+      setUnmapModal(null);
+      showToast("Copilot disconnected");
+      await loadData();
+      return true;
+    } catch {
+      showToast("Could not disconnect this copilot. Try again.", { isError: true });
       return false;
+    } finally {
+      setProductUpdating(externalProductId, false);
     }
-    setUnmapModal(null);
-    clearStatusInlineError(externalProductId);
-    showToast("Mapping removed");
-    await loadData();
-    return true;
   }
 
   async function handleToggleCta(externalProductId: string, enabled: boolean) {
-    const response = await fetch(`${apiPublicOrigin}/api/commerce/mappings`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shop, externalProductId, enabled })
-    });
-    const data = (await response.json()) as { ok: boolean; error?: string };
-    if (!response.ok || !data.ok) {
-      showToast(data.error ?? "Status update failed", { isError: true });
+    setProductUpdating(externalProductId, true);
+    try {
+      const response = await fetch(`${apiPublicOrigin}/api/commerce/mappings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop, externalProductId, enabled })
+      });
+      const data = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !data.ok) {
+        showToast(data.error ?? "Could not update setup help", { isError: true });
+        return false;
+      }
+      showToast(enabled ? "Setup help is now live" : "Setup help turned off");
+      await loadData();
+      return true;
+    } catch {
+      showToast("Could not update setup help. Try again.", { isError: true });
       return false;
-    }
-    clearStatusInlineError(externalProductId);
-    showToast(enabled ? "Storefront CTA enabled" : "Storefront CTA disabled");
-    await loadData();
-    return true;
-  }
-
-  function handleStatusChange(product: ProductRow, nextStatus: ProductWorkflowStatus) {
-    const currentStatus = getProductWorkflowStatus(product);
-    if (nextStatus === currentStatus) {
-      return;
-    }
-
-    clearStatusInlineError(product.externalProductId);
-
-    if (currentStatus === "unmapped" && nextStatus === "cta_on") {
-      setStatusInlineErrors((prev) => ({
-        ...prev,
-        [product.externalProductId]: "Map a copilot first before enabling the storefront CTA."
-      }));
-      return;
-    }
-
-    if (currentStatus === "unmapped" && nextStatus === "mapped") {
-      openMappingModal(product);
-      return;
-    }
-
-    if (currentStatus === "mapped" && nextStatus === "cta_on") {
-      void handleToggleCta(product.externalProductId, true);
-      return;
-    }
-
-    if (currentStatus === "cta_on" && nextStatus === "mapped") {
-      void handleToggleCta(product.externalProductId, false);
-      return;
-    }
-
-    if (currentStatus === "mapped" && nextStatus === "unmapped") {
-      setUnmapModal({
-        id: product.externalProductId,
-        title: product.title,
-        copilotName: product.mappedModelName ?? "Copilot",
-        fromStatus: "mapped"
-      });
-      return;
-    }
-
-    if (currentStatus === "cta_on" && nextStatus === "unmapped") {
-      setUnmapModal({
-        id: product.externalProductId,
-        title: product.title,
-        copilotName: product.mappedModelName ?? "Copilot",
-        fromStatus: "cta_on"
-      });
+    } finally {
+      setProductUpdating(externalProductId, false);
     }
   }
 
@@ -589,6 +557,7 @@ export function ShopifyProductsPanel({
     const workflowStatus = getProductWorkflowStatus(product);
     const isPopoverOpen = activePopover === product.externalProductId;
     const isMapped = Boolean(product.productPk);
+    const isUpdating = updatingProducts.has(product.externalProductId);
     const isMappingInProgress = mappingInProgress.has(product.externalProductId) && !isMapped;
 
     const actions: Array<{
@@ -596,36 +565,71 @@ export function ShopifyProductsPanel({
       url?: string;
       external?: boolean;
       disabled?: boolean;
+      destructive?: boolean;
       onAction?: () => void;
-    }> = [
-      {
-        content: "Launch Copilot",
-        url: product.launchUrl ?? undefined,
-        external: true,
-        disabled: !isMapped || !product.launchUrl
-      },
-      {
-        content: "Edit in Studio",
-        url: product.editUrl ?? undefined,
-        external: true,
-        disabled: !isMapped || !product.editUrl
-      },
-      {
-        content: "Change mapping",
-        onAction: () => {
-          setActivePopover(null);
-          openMappingModal(product);
-        }
-      },
-      {
-        content: "Refresh status",
-        disabled: !isMapped && !isMappingInProgress,
-        onAction: () => {
-          setActivePopover(null);
-          void handleRefreshSnapshots(product.externalProductId);
-        }
-      }
-    ];
+    }> = isMapped
+      ? [
+          {
+            content: "Preview setup copilot",
+            url: product.launchUrl ?? undefined,
+            external: true,
+            disabled: !product.launchUrl
+          },
+          {
+            content: "Edit in Razzl Studio",
+            url: product.editUrl ?? undefined,
+            external: true,
+            disabled: !product.editUrl
+          },
+          {
+            content: "Change copilot",
+            disabled: isUpdating,
+            onAction: () => {
+              setActivePopover(null);
+              openMappingModal(product);
+            }
+          },
+          {
+            content: "Disconnect copilot",
+            destructive: true,
+            disabled: isUpdating,
+            onAction: () => {
+              setActivePopover(null);
+              setUnmapModal({
+                id: product.externalProductId,
+                title: product.title,
+                copilotName: product.mappedModelName ?? "Copilot",
+                fromStatus: product.storefrontCtaEnabled ? "cta_on" : "mapped"
+              });
+            }
+          },
+          {
+            content: "Refresh connection",
+            disabled: isUpdating,
+            onAction: () => {
+              setActivePopover(null);
+              void handleRefreshSnapshots(product.externalProductId);
+            }
+          }
+        ]
+      : [
+          {
+            content: "Connect a copilot",
+            disabled: isUpdating,
+            onAction: () => {
+              setActivePopover(null);
+              openMappingModal(product);
+            }
+          },
+          {
+            content: "Refresh connection",
+            disabled: !isMappingInProgress || isUpdating,
+            onAction: () => {
+              setActivePopover(null);
+              void handleRefreshSnapshots(product.externalProductId);
+            }
+          }
+        ];
 
     return (
       <IndexTable.Row id={product.externalProductId} key={product.externalProductId} position={index}>
@@ -643,24 +647,29 @@ export function ShopifyProductsPanel({
         </IndexTable.Cell>
         <IndexTable.Cell>
           {product.mappedModelName ? (
-            <Text as="span" variant="bodyMd">
-              {product.mappedModelName}
-            </Text>
+            <BlockStack gap="100">
+              <Text as="span" variant="bodyMd" fontWeight="semibold">
+                {product.mappedModelName}
+              </Text>
+              <Text as="span" variant="bodySm" tone="subdued">
+                Connected
+              </Text>
+            </BlockStack>
           ) : isMappingInProgress ? (
-            <Badge tone="info">Mapping in progress…</Badge>
+            <Badge tone="info">Connecting…</Badge>
           ) : (
-            <Text as="span" tone="subdued" variant="bodySm">
-              —
-            </Text>
+            <Button size="slim" disabled={isUpdating} onClick={() => openMappingModal(product)}>
+              Connect copilot
+            </Button>
           )}
         </IndexTable.Cell>
         <IndexTable.Cell>
-          <div className="shopify-product-status-select-wrap">
-            <ProductStatusSelect
+          <div className="shopify-product-experience-control">
+            <ProductExperienceControl
               value={workflowStatus}
               productTitle={product.title}
-              inlineError={statusInlineErrors[product.externalProductId] ?? null}
-              onChange={(next) => handleStatusChange(product, next)}
+              loading={isUpdating}
+              onToggle={(enabled) => void handleToggleCta(product.externalProductId, enabled)}
             />
           </div>
         </IndexTable.Cell>
@@ -672,6 +681,7 @@ export function ShopifyProductsPanel({
                 icon={MenuHorizontalIcon}
                 variant="plain"
                 accessibilityLabel={`Actions for ${product.title}`}
+                disabled={isUpdating}
                 onClick={() =>
                   setActivePopover(isPopoverOpen ? null : product.externalProductId)
                 }
@@ -695,14 +705,18 @@ export function ShopifyProductsPanel({
             <InlineStack align="space-between" blockAlign="start" gap="400">
               <BlockStack gap="100">
                 <Text as="h2" variant="headingMd">
-                  Store products
+                  Products &amp; setup help
                 </Text>
                 <Text as="p" tone="subdued">
-                  Map Shopify products to Razzl copilots or create a new copilot from a PDF.
+                  Connect each product to its setup copilot, then decide where setup help is live.
                 </Text>
-                <Text as="p" variant="bodySm" tone="subdued">
-                  {products.length} products · {mappedCount} mapped
-                </Text>
+                <InlineStack gap="150">
+                  <Badge>{`${products.length} products`}</Badge>
+                  <Badge tone="info">{`${mappedCount} connected`}</Badge>
+                  <Badge tone="success">
+                    {`${products.filter((product) => product.storefrontCtaEnabled).length} live`}
+                  </Badge>
+                </InlineStack>
               </BlockStack>
               <InlineStack gap="200" blockAlign="center">
                 {lastSynced ? (
@@ -718,7 +732,7 @@ export function ShopifyProductsPanel({
                   loading={refreshing}
                   disabled={loading || reloadingProducts}
                 >
-                  Refresh status
+                  Refresh connections
                 </Button>
                 <Button
                   variant="primary"
@@ -726,7 +740,7 @@ export function ShopifyProductsPanel({
                   loading={syncing || reloadingProducts}
                   disabled={syncing || reloadingProducts}
                 >
-                  Sync now
+                  Sync catalog
                 </Button>
               </InlineStack>
             </InlineStack>
@@ -750,9 +764,9 @@ export function ShopifyProductsPanel({
                 labelHidden
                 options={[
                   { label: "All products", value: "all" },
-                  { label: "Unmapped", value: "unmapped" },
-                  { label: "Mapped", value: "mapped" },
-                  { label: "Storefront CTA On", value: "cta_on" }
+                  { label: "Needs a copilot", value: "unmapped" },
+                  { label: "Connected", value: "mapped" },
+                  { label: "Live on storefront", value: "cta_on" }
                 ]}
                 value={statusFilter}
                 onChange={setStatusFilter}
@@ -795,7 +809,7 @@ export function ShopifyProductsPanel({
             }}
             image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
           >
-            <p>Import your Shopify catalog to start mapping copilots.</p>
+            <p>Import your Shopify catalog to start connecting setup copilots.</p>
           </EmptyState>
         ) : (
           <div className="shopify-index-table-wrap">
@@ -805,8 +819,8 @@ export function ShopifyProductsPanel({
               itemCount={filteredProducts.length}
               headings={[
                 { title: "Store product", id: "title" },
-                { title: "Copilot", id: "copilot" },
-                { title: "Status", id: "status" },
+                { title: "Setup copilot", id: "copilot" },
+                { title: "Product page", id: "status" },
                 { title: "Actions" }
               ]}
               sortable={[true, true, true, false]}
@@ -823,7 +837,8 @@ export function ShopifyProductsPanel({
             </IndexTable>
             <div className="shopify-index-table-footer">
               <Text as="p" variant="bodySm" tone="subdued">
-                Showing {filteredProducts.length} of {products.length} products · {mappedCount} mapped
+                Showing {filteredProducts.length} of {products.length} products · {mappedCount}{" "}
+                connected · {products.filter((product) => product.storefrontCtaEnabled).length} live
               </Text>
             </div>
           </div>
@@ -838,12 +853,13 @@ export function ShopifyProductsPanel({
           setCopilotSearch("");
           setMapMode("existing");
         }}
-        title={mappingModal ? `Map copilot — ${mappingModal.title}` : "Map copilot"}
+        title="Connect a setup copilot"
         primaryAction={
           mapMode === "existing"
             ? {
-                content: "Map copilot",
+                content: "Connect copilot",
                 disabled: !selectedCopilotPk,
+                loading: mappingModal ? updatingProducts.has(mappingModal.id) : false,
                 onAction: () => {
                   if (mappingModal && selectedCopilotPk) {
                     void handleMap(mappingModal.id, Number(selectedCopilotPk));
@@ -866,20 +882,40 @@ export function ShopifyProductsPanel({
       >
         <Modal.Section>
           <BlockStack gap="400">
-            <ChoiceList
-              title="How would you like to map this product?"
-              choices={[
-                { label: "Map existing copilot", value: "existing" },
-                { label: "Create new copilot from PDF", value: "create" }
-              ]}
-              selected={[mapMode]}
-              onChange={(selected) => setMapMode((selected[0] as "existing" | "create") ?? "existing")}
-            />
+            <BlockStack gap="100">
+              <Text as="p" variant="bodyMd">
+                Choose the setup guide customers should use for{" "}
+                <strong>{mappingModal?.title ?? "this product"}</strong>.
+              </Text>
+              <Text as="p" variant="bodySm" tone="subdued">
+                The same Razzl copilot can be connected to more than one Shopify product.
+              </Text>
+            </BlockStack>
+
+            <BlockStack gap="200">
+              <Text as="h3" variant="headingSm">
+                Where is the copilot?
+              </Text>
+              <InlineStack gap="200">
+                <Button
+                  variant={mapMode === "existing" ? "primary" : undefined}
+                  onClick={() => setMapMode("existing")}
+                >
+                  Already in Razzl
+                </Button>
+                <Button
+                  variant={mapMode === "create" ? "primary" : undefined}
+                  onClick={() => setMapMode("create")}
+                >
+                  Create from a PDF
+                </Button>
+              </InlineStack>
+            </BlockStack>
 
             {mapMode === "existing" ? (
               <BlockStack gap="300">
                 <TextField
-                  label="Search copilots"
+                  label="Find a copilot"
                   value={copilotSearch}
                   onChange={setCopilotSearch}
                   placeholder="Search by name or Razzl code"
@@ -888,7 +924,7 @@ export function ShopifyProductsPanel({
                   onClearButtonClick={() => setCopilotSearch("")}
                 />
                 <Select
-                  label="Razzl copilot"
+                  label="Choose a Razzl copilot"
                   options={[
                     { label: "Select copilot…", value: "" },
                     ...filteredStudioProducts.map((studioProduct) => ({
@@ -903,8 +939,8 @@ export function ShopifyProductsPanel({
             ) : studioCreateCopilotUrl && mappingModal ? (
               <BlockStack gap="200">
                 <Text as="p" tone="subdued">
-                  Create a new copilot in Razzl Studio from a PDF. Studio will map it back to this
-                  product automatically.
+                  Create a polished setup copilot from an instruction PDF in Razzl Studio. When
+                  it is ready, Studio will connect it back to this product automatically.
                 </Text>
                 <Button
                   variant="primary"
@@ -921,11 +957,11 @@ export function ShopifyProductsPanel({
                     window.open(url, "_blank", "noopener,noreferrer");
                   }}
                 >
-                  Create copilot from PDF in Studio
+                  Create in Razzl Studio
                 </Button>
                 <Text as="p" variant="bodySm" tone="subdued">
-                  The row will show “Mapping in progress” until Refresh status sees the automatic
-                  Studio mapping.
+                  This row will show “Connecting…” until the new copilot is ready. Use Refresh
+                  connections when you return.
                 </Text>
               </BlockStack>
             ) : (
@@ -940,14 +976,11 @@ export function ShopifyProductsPanel({
       <Modal
         open={unmapModal !== null}
         onClose={() => setUnmapModal(null)}
-        title={
-          unmapModal?.fromStatus === "cta_on"
-            ? "Remove mapping and disable storefront CTA?"
-            : "Remove copilot mapping?"
-        }
+        title="Disconnect copilot from this product?"
         primaryAction={{
-          content: "Remove mapping",
+          content: "Disconnect copilot",
           destructive: true,
+          loading: unmapModal ? updatingProducts.has(unmapModal.id) : false,
           onAction: () => {
             if (unmapModal) {
               void handleUnmap(unmapModal.id);
@@ -963,9 +996,10 @@ export function ShopifyProductsPanel({
       >
         <Modal.Section>
           <Text as="p" variant="bodyMd">
-            {unmapModal?.fromStatus === "cta_on"
-              ? "Remove mapping and disable storefront CTA? Customers on this product page will no longer see the Setup Copilot button."
-              : `Remove copilot mapping? This will disconnect ${unmapModal?.copilotName ?? "this copilot"} from ${unmapModal?.title ?? "this product"}. The storefront CTA will be hidden immediately if active.`}
+            <strong>{unmapModal?.copilotName ?? "This copilot"}</strong> will stay safely in Razzl
+            and remain connected to any other Shopify products. Setup help will be removed from{" "}
+            <strong>{unmapModal?.title ?? "this product"}</strong>
+            {unmapModal?.fromStatus === "cta_on" ? " immediately." : "."}
           </Text>
         </Modal.Section>
       </Modal>

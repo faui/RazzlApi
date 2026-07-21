@@ -182,7 +182,7 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
               Setup help analytics
             </Text>
             <Text as="p" tone="subdued">
-              CTA clicks from your storefront product pages.
+              Customer opens from setup help on your product pages.
             </Text>
           </BlockStack>
           <Button icon={RefreshIcon} onClick={() => void handleRefresh()} loading={loading}>
@@ -223,8 +223,8 @@ export function ShopifyLaunchAnalyticsPanel({ shop, apiPublicOrigin, tenantLinke
               }
             >
               <p>
-                Enable the storefront CTA on a mapped product, then confirm the Razzl theme block is
-                on your product page template.
+                Turn on setup help for a connected product, then confirm the Razzl app block is on
+                your product page template.
               </p>
             </EmptyState>
           </Box>

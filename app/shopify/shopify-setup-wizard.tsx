@@ -8,7 +8,6 @@ import {
   Button,
   Card,
   Icon,
-  InlineGrid,
   InlineStack,
   ProgressBar,
   SkeletonBodyText,
@@ -299,59 +298,43 @@ export function ShopifySetupWizard({
   if (setupComplete && !changingSubscription) {
     const stripeSubscriptionUrl = studioSubscriptionUrl(studioDashboardUrl);
     return (
-      <Card>
-        <BlockStack gap="400">
-          <InlineStack align="space-between" blockAlign="center" gap="300">
-            <InlineStack gap="200" blockAlign="center">
+      <Card padding="0">
+        <Box padding="400" background="bg-surface-secondary">
+          <InlineStack align="space-between" blockAlign="center" gap="400">
+            <InlineStack gap="200" blockAlign="center" wrap={false}>
               <Icon source={CheckCircleIcon} tone="success" />
               <BlockStack gap="050">
-                <Text as="h2" variant="headingMd">
-                  Store connected to Razzl
-                </Text>
+                <InlineStack gap="150" blockAlign="center">
+                  <Text as="h2" variant="headingMd">
+                    Razzl is ready
+                  </Text>
+                  <Badge tone="success">Setup complete</Badge>
+                </InlineStack>
                 <Text as="p" tone="subdued">
-                  {effectiveProductCount} Shopify product{effectiveProductCount === 1 ? "" : "s"}{" "}
-                  ready to map and publish.
+                  {effectiveProductCount} product{effectiveProductCount === 1 ? "" : "s"} synced
+                  {tenantName ? ` · ${tenantName} connected` : ""}
                 </Text>
               </BlockStack>
             </InlineStack>
-            <Badge tone="success">Setup complete</Badge>
-          </InlineStack>
 
-          <InlineGrid columns={{ xs: 1, md: 3 }} gap="300">
-            {steps.map((step) => (
-              <Box
-                key={step.id}
-                padding="300"
-                background="bg-surface-success"
-                borderRadius="200"
-              >
-                <InlineStack gap="150" blockAlign="center" wrap={false}>
-                  <Icon source={CheckCircleIcon} tone="success" />
-                  <Text as="span" variant="bodySm" fontWeight="semibold">
-                    {step.label}
-                  </Text>
-                </InlineStack>
-              </Box>
-            ))}
-          </InlineGrid>
-
-          <InlineStack gap="200">
-            {studioDashboardUrl ? (
-              <Button url={studioDashboardUrl} external icon={ExternalIcon} variant="primary">
-                Manage your store in Razzl Studio
-              </Button>
-            ) : null}
-            {billingStatus?.billingSource === "stripe" ? (
-              stripeSubscriptionUrl ? (
-                <Button url={stripeSubscriptionUrl} external>
-                  Manage subscription in Studio
+            <InlineStack gap="200" align="end">
+              {studioDashboardUrl ? (
+                <Button url={studioDashboardUrl} external icon={ExternalIcon}>
+                  Open Razzl Studio
                 </Button>
-              ) : null
-            ) : (
-              <Button onClick={() => setChangingSubscription(true)}>Change subscription</Button>
-            )}
+              ) : null}
+              {billingStatus?.billingSource === "stripe" ? (
+                stripeSubscriptionUrl ? (
+                  <Button url={stripeSubscriptionUrl} external>
+                    Subscription
+                  </Button>
+                ) : null
+              ) : (
+                <Button onClick={() => setChangingSubscription(true)}>Subscription</Button>
+              )}
+            </InlineStack>
           </InlineStack>
-        </BlockStack>
+        </Box>
       </Card>
     );
   }
@@ -366,8 +349,8 @@ export function ShopifySetupWizard({
                 Set up Razzl Product Setup Copilot
               </Text>
               <Text as="p" tone="subdued">
-                Complete these steps in order to unlock product mapping, storefront settings, and
-                analytics.
+                Complete these steps to connect products, publish setup help, and see customer
+                activity.
               </Text>
             </BlockStack>
             <Text as="span" variant="bodySm" fontWeight="semibold">
