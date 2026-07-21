@@ -1,7 +1,7 @@
 "use client";
 
 import { Banner, BlockStack } from "@shopify/polaris";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { ShopifyAppFooter } from "@/app/shopify/shopify-app-footer";
 import { ShopifyCtaSettingsPanel } from "@/app/shopify/shopify-cta-settings-panel";
@@ -43,10 +43,28 @@ export function ShopifyCommercePanels({
   const [studioDashboardUrl, setStudioDashboardUrl] = useState<string | null>(null);
   const [setupComplete, setSetupComplete] = useState(false);
 
-  const handleSetupCompleteChange = (complete: boolean) => {
-    setSetupComplete(complete);
-    onSetupCompleteChange?.(complete);
-  };
+  const handleProductStatsChange = useCallback((stats: ProductStats) => {
+    setProductStats((current) =>
+      current.productCount === stats.productCount &&
+      current.mappedCount === stats.mappedCount &&
+      current.ctaEnabledCount === stats.ctaEnabledCount
+        ? current
+        : stats
+    );
+    setProductStatsReady(true);
+  }, []);
+
+  const handleProductsSyncComplete = useCallback(() => {
+    setProductsRefreshVersion((version) => version + 1);
+  }, []);
+
+  const handleSetupCompleteChange = useCallback(
+    (complete: boolean) => {
+      setSetupComplete(complete);
+      onSetupCompleteChange?.(complete);
+    },
+    [onSetupCompleteChange]
+  );
 
   const lockedSectionProps = !setupComplete
     ? ({ className: "shopify-setup-locked", "aria-disabled": true, inert: true } as const)
@@ -62,7 +80,7 @@ export function ShopifyCommercePanels({
         productCount={productStats.productCount}
         productStatsReady={productStatsReady}
         studioDashboardUrl={studioDashboardUrl}
-        onSyncComplete={() => setProductsRefreshVersion((version) => version + 1)}
+        onSyncComplete={handleProductsSyncComplete}
         onSetupCompleteChange={handleSetupCompleteChange}
       />
 
@@ -78,10 +96,7 @@ export function ShopifyCommercePanels({
           apiPublicOrigin={apiPublicOrigin}
           tenantLinked={tenantLinked}
           refreshVersion={productsRefreshVersion}
-          onProductStatsChange={(stats) => {
-            setProductStats(stats);
-            setProductStatsReady(true);
-          }}
+          onProductStatsChange={handleProductStatsChange}
           onCreateCopilotUrl={onCreateCopilotUrl}
           onStudioDashboardUrlChange={setStudioDashboardUrl}
         />
