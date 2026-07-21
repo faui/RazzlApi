@@ -2,54 +2,61 @@
 
 ## Current status
 
-**Slice 13 planned** — Embedded admin setup wizard + sync/map/CTA UX fixes + Studio commerce indicators. Spec: [`docs/commerce/SLICE-13-UX-REVISION.md`](docs/commerce/SLICE-13-UX-REVISION.md).
+**Slice 13 Shopify sync defect fix deployed to dev on 2026-07-21.**
 
-**Slice 12 started** — App Store readiness checklist + listing docs. **Shopify go-live token hardening** implemented (expiring tokens, row-lock refresh, session-token exchange, `tokenStatus` on connection API).
+The OAuth callback 404 was caused by the dev ECS task pinning Shopify Admin API
+version `2024-10`, which is no longer available. API, Shopify app configuration,
+theme extension configuration, and Studio-owned ECS Terraform now use `2026-07`.
 
-## Current branch
+The embedded product board now reads already-synced product mappings without
+resolving an Admin API token. Sync and other Shopify API operations still require
+a valid token. This keeps the 16 locally stored Shopify products visible while a
+merchant reconnect is required.
 
-Merge token hardening + deploy api-dev, run Connect → sync → billing E2E on dev store, then continue Slice 12 App Store prep.
+## Deployed revisions
 
-## Last completed slice
+| Surface | Deployed code/config commit | Dev ECS revision | Status |
+|---|---|---|---|
+| Razzl API | `9726dbb` | `razzl-dev-api:34` | rollout completed, target healthy |
+| Studio | `8775016` | `razzl-dev-studio:38` | rollout completed |
 
-**Slice 10** — Shopify billing (pending full manual E2E after webhook re-deploy)
+The latest API task definition has `SHOPIFY_API_VERSION=2026-07` and runs image
+`9726dbb9cc296e5da0c7b610170254fc95b28655`.
 
-## Next slice
+## Verification completed
 
-**Slice 12** — App Store submission prep (in progress)
+- Focused regression tests: 5 passed
+- Full commerce tests: 85 passed
+- API lint: passed
+- API production build: passed
+- Terraform validate: passed
+- Dev Terraform apply: one API task-definition replacement only
+- `https://api-dev.razzl.com/health`: `{"ok":true}`
+- `https://studio-dev.razzl.com/api/health`: healthy
+- Product board API for `razzl-dev.myshopify.com`: 16 Shopify products, 2 Studio products
+- OAuth readiness: Shopify config, token encryption, and database all healthy
 
-## Exact next steps
+## Remaining merchant E2E step
 
-1. Merge + deploy api-dev
-2. **`shopify app deploy`** — registers absolute webhook URLs (critical fix)
-3. Run `npm run test:slice10-smoke -- YOUR-STORE.myshopify.com`
-4. Manual: approve test plan → verify SQL in [`SLICE-10-E2E-VALIDATION.md`](docs/commerce/SLICE-10-E2E-VALIDATION.md)
-5. Work [`APP-STORE-READINESS.md`](docs/commerce/APP-STORE-READINESS.md) checklist — screenshots, demo store, listing form
+The current connection is tenant-linked but has `tokenStatus=reauth_required`.
+This is expected after the earlier failed OAuth callback and requires one
+interactive Shopify reconnect:
 
-## Slice 10 validation status
+1. Sign in to the Shopify dev account in the in-app browser.
+2. Open the Razzl embedded app and complete reconnect/OAuth approval.
+3. Confirm the product list renders immediately.
+4. Run **Sync now** and confirm a successful sync plus refreshed list.
+5. Exercise mapping, multi-title hover/count text, CTA toggle, and Studio commerce indicators.
+6. Recheck API/Studio health, ECS stability, and CloudWatch errors.
 
-| Check | Status |
-|-------|--------|
-| api-dev deployed (CI run 28752759266) | ✅ |
-| Lint + tests (52) | ✅ |
-| Smoke script (infra) | ✅ |
-| Webhook URL fix in `shopify.app.toml` | ✅ (needs deploy) |
-| Dev store billing approval E2E | ⬜ Manual |
-| `app_subscriptions/update` → DB | ⬜ After re-deploy |
+Do not put Shopify credentials, session tokens, access tokens, or refresh tokens
+in repo files, commands, screenshots, or logs.
 
-See [`docs/commerce/SLICE-10-E2E-VALIDATION.md`](docs/commerce/SLICE-10-E2E-VALIDATION.md).
+## Ownership reminders
 
-## Slice 12 deliverables (started)
-
-| Path | Purpose |
-|------|---------|
-| `docs/commerce/APP-STORE-READINESS.md` | Submission checklist + listing copy draft |
-| `docs/commerce/SLICE-10-E2E-VALIDATION.md` | E2E validation report + SQL |
-| `scripts/slice-10-e2e-smoke.mjs` | api-dev smoke (optional shop arg) |
-| `app/shopify/shopify-app-footer.tsx` | Privacy + support links |
-
-## Recommended next Composer prompt
-
-```text
-Capture App Store screenshots from dev store demo. Complete APP-STORE-READINESS.md demo store section. Create shopify.app.prod.toml for production deploy.
-```
+- Commerce code and Shopify adapter changes belong in Razzl API.
+- Schema migrations and shared ECS Terraform belong in Studio.
+- Shopify API callers must use the centralized version helper.
+- Local database reads must not unnecessarily require an Admin API token.
+- Storefront CTA URLs use `launchsource=shopify`.
+- Stripe customers do not receive paid Shopify-billed features (OQ-020).
