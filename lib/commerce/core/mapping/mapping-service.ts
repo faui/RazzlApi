@@ -9,6 +9,7 @@ import {
 } from "@/lib/commerce/core/mapping/mapping-repo";
 import {
   CommerceSyncError,
+  requirePersistedLinkedShopConnection,
   requireLinkedShopConnection
 } from "@/lib/commerce/core/connections/adapter-context";
 import {
@@ -213,7 +214,7 @@ export async function getProductMappingBoard(shop: string): Promise<{
   studioDashboardUrl: string;
   studioCreateCopilotUrl: string;
 }> {
-  const { connection } = await requireLinkedShopConnection(shop);
+  const { connection } = await requirePersistedLinkedShopConnection(shop);
   const tenantPk = connection.tenant_fk;
   if (!tenantPk) {
     throw new CommerceSyncError("TENANT_NOT_LINKED", "Link your Razzl Studio account first");

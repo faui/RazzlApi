@@ -5,7 +5,11 @@ import {
   CommerceMappingError,
   getProductMappingBoard
 } from "@/lib/commerce/core/mapping/mapping-service";
-import { CommerceSyncError } from "@/lib/commerce/core/connections/adapter-context";
+import {
+  CommerceSyncError,
+  ShopifyTokenError
+} from "@/lib/commerce/core/connections/adapter-context";
+import { traceLog } from "@/lib/logger";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -51,6 +55,24 @@ export async function GET(request: Request) {
         code === "NOT_INSTALLED" ? 404 : code === "TENANT_NOT_LINKED" ? 409 : 400;
       return NextResponse.json({ ok: false, error: error.message, code }, { status: httpStatus });
     }
+
+    if (error instanceof ShopifyTokenError) {
+      const httpStatus = error.code === "TOKEN_REFRESH_TRANSIENT" ? 503 : 401;
+      return NextResponse.json(
+        {
+          ok: false,
+          error: error.message,
+          code: error.code,
+          retryable: error.retryable
+        },
+        { status: httpStatus }
+      );
+    }
+
+    traceLog(1, "commerce:products:load_failed", {
+      shop,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json({ ok: false, error: "Failed to load products" }, { status: 500 });
   }
 }

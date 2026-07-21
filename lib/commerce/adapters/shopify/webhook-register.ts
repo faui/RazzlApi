@@ -3,6 +3,7 @@ import type {
   WebhookRegistrationResult
 } from "@/lib/commerce/adapters/types";
 import { CommerceAdapterError } from "@/lib/commerce/adapters/types";
+import { getShopifyApiVersion } from "@/lib/commerce/config/shopify-env";
 
 export const DEFAULT_SHOPIFY_WEBHOOK_TOPICS = [
   "products/create",
@@ -14,10 +15,6 @@ export const DEFAULT_SHOPIFY_WEBHOOK_TOPICS = [
   "customers/redact",
   "shop/redact"
 ] as const;
-
-function getShopifyApiVersion(): string {
-  return process.env.SHOPIFY_API_VERSION?.trim() ?? "2024-10";
-}
 
 async function registerSingleWebhook(
   context: CommerceAdapterContext,

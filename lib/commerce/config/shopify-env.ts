@@ -9,6 +9,12 @@ export type ShopifyEnvConfig = {
   oauthCallbackPath: string;
 };
 
+export const DEFAULT_SHOPIFY_API_VERSION = "2026-07";
+
+export function getShopifyApiVersion(): string {
+  return process.env.SHOPIFY_API_VERSION?.trim() || DEFAULT_SHOPIFY_API_VERSION;
+}
+
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -26,7 +32,7 @@ export function getShopifyEnvConfig(): ShopifyEnvConfig {
     apiKey: requireEnv("SHOPIFY_API_KEY"),
     apiSecret: requireEnv("SHOPIFY_API_SECRET"),
     scopes: (process.env.SHOPIFY_SCOPES ?? "read_products").split(",").map((s) => s.trim()).filter(Boolean),
-    apiVersion: process.env.SHOPIFY_API_VERSION?.trim() ?? "2026-01",
+    apiVersion: getShopifyApiVersion(),
     publicOrigin,
     oauthCallbackPath
   };

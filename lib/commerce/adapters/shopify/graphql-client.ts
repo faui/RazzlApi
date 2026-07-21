@@ -1,9 +1,6 @@
 import type { CommerceAdapterContext } from "@/lib/commerce/adapters/types";
 import { CommerceAdapterError } from "@/lib/commerce/adapters/types";
-
-function getShopifyApiVersion(): string {
-  return process.env.SHOPIFY_API_VERSION?.trim() ?? "2024-10";
-}
+import { getShopifyApiVersion } from "@/lib/commerce/config/shopify-env";
 
 type GraphqlResponse<T> = {
   data?: T;

@@ -4,6 +4,7 @@ import type {
   NormalizedCommerceProductPage
 } from "@/lib/commerce/adapters/types";
 import { CommerceAdapterError } from "@/lib/commerce/adapters/types";
+import { getShopifyApiVersion } from "@/lib/commerce/config/shopify-env";
 import {
   normalizeShopifyProduct,
   type ShopifyRestProduct
@@ -12,10 +13,6 @@ import {
 type ShopifyProductsResponse = {
   products: ShopifyRestProduct[];
 };
-
-function getShopifyApiVersion(): string {
-  return process.env.SHOPIFY_API_VERSION?.trim() ?? "2024-10";
-}
 
 function parseNextPageCursor(linkHeader: string | null): string | null {
   if (!linkHeader) {

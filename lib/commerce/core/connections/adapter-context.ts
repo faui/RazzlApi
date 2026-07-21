@@ -84,6 +84,32 @@ export async function requireLinkedShopConnection(shop: string): Promise<{
   };
 }
 
+/**
+ * Load a tenant-linked connection without resolving an Admin API token.
+ *
+ * Use this only for local database reads. Operations that call Shopify must use
+ * requireLinkedShopConnection so expired or revoked tokens cannot be bypassed.
+ */
+export async function requirePersistedLinkedShopConnection(shop: string): Promise<{
+  connection: CommercePlatformConnectionRow;
+  status: ConnectionStatusSummary;
+}> {
+  const connection = await findConnectionByStoreDomain(shop);
+  const status = await getConnectionStatusByStoreDomain(shop);
+  if (!connection || !status) {
+    throw new CommerceSyncError("NOT_INSTALLED", "Shopify store is not installed");
+  }
+
+  if (!connection.tenant_fk) {
+    throw new CommerceSyncError(
+      "TENANT_NOT_LINKED",
+      "Link your Razzl Studio account before loading products"
+    );
+  }
+
+  return { connection, status };
+}
+
 export { ShopifyTokenError };
 
 export function getAdapterForConnection(connection: CommercePlatformConnectionRow) {
