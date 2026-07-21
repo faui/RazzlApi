@@ -31,6 +31,12 @@ export type ProductSyncResult = {
   errorMessage?: string;
 };
 
+function getSyncMarker(): Date {
+  const now = new Date();
+  now.setMilliseconds(0);
+  return now;
+}
+
 export async function runProductSync(
   shop: string,
   syncType: CommerceSyncType = "manual"
@@ -40,7 +46,11 @@ export async function runProductSync(
     await assertCommerceFeatureEntitlement(connection, connection.tenant_fk, "sync");
   }
   const adapter = getAdapterForConnection(connection);
-  const syncStartedAt = new Date();
+  // MySQL DATETIME columns in the commerce schema store whole seconds. Use the
+  // same precision for the run marker; otherwise a freshly upserted row such as
+  // 10:12:49.000 compares older than a JS cutoff such as 10:12:49.527 and is
+  // immediately marked absent at the end of its own sync.
+  const syncStartedAt = getSyncMarker();
   const syncRunId = await createSyncRun(connection.commerce_platform_connection_pk, "shopify", syncType);
 
   const stats: SyncRunStats = {

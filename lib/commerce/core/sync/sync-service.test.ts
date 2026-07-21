@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import productFixture from "@/lib/commerce/adapters/shopify/__fixtures__/product-single.json";
 import { normalizeShopifyProduct } from "@/lib/commerce/adapters/shopify/normalize";
@@ -41,7 +41,10 @@ import {
   getAdapterForConnection,
   requireLinkedShopConnection
 } from "@/lib/commerce/core/connections/adapter-context";
-import { upsertExternalProduct } from "@/lib/commerce/core/products/external-product-repo";
+import {
+  markExternalProductsAbsentSince,
+  upsertExternalProduct
+} from "@/lib/commerce/core/products/external-product-repo";
 import { completeSyncRun, createSyncRun } from "@/lib/commerce/core/sync/sync-run-repo";
 import { runProductSync } from "@/lib/commerce/core/sync/sync-service";
 
@@ -50,7 +53,13 @@ describe("runProductSync", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("persists paginated products and completes sync run", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-21T15:12:49.527Z"));
     const normalized = normalizeShopifyProduct(productFixture);
     vi.mocked(requireLinkedShopConnection).mockResolvedValue({
       connection: {
@@ -108,7 +117,16 @@ describe("runProductSync", () => {
     const result = await runProductSync("demo.myshopify.com", "manual");
 
     expect(createSyncRun).toHaveBeenCalledWith(7, "shopify", "manual");
-    expect(upsertExternalProduct).toHaveBeenCalled();
+    expect(upsertExternalProduct).toHaveBeenCalledWith(
+      7,
+      "shopify",
+      normalized,
+      new Date("2026-07-21T15:12:49.000Z")
+    );
+    expect(markExternalProductsAbsentSince).toHaveBeenCalledWith(
+      7,
+      new Date("2026-07-21T15:12:49.000Z")
+    );
     expect(completeSyncRun).toHaveBeenCalledWith(
       501,
       "succeeded",
