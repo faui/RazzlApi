@@ -52,8 +52,6 @@ export type BillingStatusSummary = {
   plans: CommerceSubscriptionTier[];
 };
 
-const SHOPIFY_APP_DISPLAY_NAME = "Razzl Product Setup Copilot";
-
 export async function resolveBillingLane(
   connection: CommercePlatformConnectionRow,
   tenantPk: number
@@ -127,7 +125,7 @@ export async function getBillingStatusSummary(
     platformBillingStatus: account?.platform_billing_status ?? connection.platform_billing_status ?? "pending",
     shopifyManageMessage:
       billingSource === "shopify_billing"
-        ? `Manage your subscription in Shopify admin: Apps → ${SHOPIFY_APP_DISPLAY_NAME} → Manage subscription.`
+        ? "Change plans from the Razzl app. Shopify will ask you to approve the replacement subscription."
         : null,
     hasEntitlement,
     requiresShopifyBilling,

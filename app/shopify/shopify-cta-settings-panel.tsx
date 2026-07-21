@@ -16,8 +16,8 @@ import {
 import { ChatIcon, ExternalIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useState } from "react";
 
-import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 import { ShopifyCtaStorefrontPreview } from "@/app/shopify/shopify-cta-storefront-preview";
+import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
 import { ShopifySwitch } from "@/app/shopify/shopify-switch";
 
 type CtaConfig = {
@@ -78,7 +78,6 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
 
   useEffect(() => {
     if (!tenantLinked) return;
-
     let cancelled = false;
 
     const run = async () => {
@@ -143,21 +142,21 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
   return (
     <Card padding="0">
       <Box padding="400" background="bg-surface-secondary">
-        <InlineStack gap="200" blockAlign="start">
-          <Icon source={ChatIcon} tone="base" />
-          <BlockStack gap="100">
+        <div className="shopify-cta-settings-header">
+          <InlineStack gap="200" blockAlign="center" wrap={false}>
+            <Icon source={ChatIcon} tone="base" />
             <Text as="h2" variant="headingMd">
               Storefront CTA settings
             </Text>
-            <Text as="p" tone="subdued">
-              These settings control the Setup Copilot button on your product pages.
-            </Text>
-          </BlockStack>
-        </InlineStack>
+          </InlineStack>
+          <Text as="p" tone="subdued" alignment="end">
+            These settings control the Setup Copilot button on your product pages.
+          </Text>
+        </div>
       </Box>
 
       <Box padding="400">
-        <BlockStack gap="500">
+        <BlockStack gap="400">
           {errorBanner ? (
             <Banner tone="critical" onDismiss={() => setErrorBanner(null)}>
               {errorBanner}
@@ -168,78 +167,125 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
             <SkeletonBodyText lines={5} />
           ) : config ? (
             <form onSubmit={(event) => void handleSave(event)}>
-              <BlockStack gap="500">
+              <BlockStack gap="400">
                 <div className="shopify-cta-settings-columns">
                   <InlineGrid columns={{ xs: 1, md: 2 }} gap="400">
                     <BlockStack gap="400">
-                      <Select
-                        label="Default button label"
-                        options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
-                        value={config.ctaLabelDefault}
-                        onChange={(value) =>
-                          setConfig((prev) => (prev ? { ...prev, ctaLabelDefault: value } : prev))
-                        }
-                      />
-                      <Select
-                        label="Open Copilot in"
-                        options={[
-                          { label: "New tab ↗", value: "new_tab" },
-                          { label: "Same tab", value: "same_tab" }
-                        ]}
-                        value={config.ctaOpenMode}
-                        onChange={(value) =>
-                          setConfig((prev) =>
-                            prev ? { ...prev, ctaOpenMode: value as CtaConfig["ctaOpenMode"] } : prev
-                          )
-                        }
-                      />
-                      <Select
-                        label="Style mode"
-                        options={[
-                          { label: "Inherit theme", value: "inherit_theme" },
-                          { label: "Button", value: "button" },
-                          { label: "Link", value: "link" },
-                          { label: "Badge", value: "badge" }
-                        ]}
-                        value={config.ctaStyleMode}
-                        onChange={(value) =>
-                          setConfig((prev) =>
-                            prev ? { ...prev, ctaStyleMode: value as CtaConfig["ctaStyleMode"] } : prev
-                          )
-                        }
-                      />
+                      <Text as="h3" variant="headingSm">
+                        Storefront appearance
+                      </Text>
+                      <div className="shopify-cta-settings-fields">
+                        <Select
+                          label="Default button label"
+                          options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
+                          value={config.ctaLabelDefault}
+                          onChange={(value) =>
+                            setConfig((previous) =>
+                              previous ? { ...previous, ctaLabelDefault: value } : previous
+                            )
+                          }
+                        />
+                        <Select
+                          label="Open Copilot in"
+                          options={[
+                            { label: "New tab ↗", value: "new_tab" },
+                            { label: "Same tab", value: "same_tab" }
+                          ]}
+                          value={config.ctaOpenMode}
+                          onChange={(value) =>
+                            setConfig((previous) =>
+                              previous
+                                ? {
+                                    ...previous,
+                                    ctaOpenMode: value as CtaConfig["ctaOpenMode"]
+                                  }
+                                : previous
+                            )
+                          }
+                        />
+                        <Select
+                          label="Style mode"
+                          options={[
+                            { label: "Inherit theme", value: "inherit_theme" },
+                            { label: "Button", value: "button" },
+                            { label: "Link", value: "link" },
+                            { label: "Badge", value: "badge" }
+                          ]}
+                          value={config.ctaStyleMode}
+                          onChange={(value) =>
+                            setConfig((previous) =>
+                              previous
+                                ? {
+                                    ...previous,
+                                    ctaStyleMode: value as CtaConfig["ctaStyleMode"]
+                                  }
+                                : previous
+                            )
+                          }
+                        />
+                      </div>
                       <InlineStack gap="200" blockAlign="center">
                         <ShopifySwitch
                           checked={config.showPoweredByRazzl}
                           label='Show "Powered by Razzl"'
                           onChange={(checked) =>
-                            setConfig((prev) => (prev ? { ...prev, showPoweredByRazzl: checked } : prev))
+                            setConfig((previous) =>
+                              previous ? { ...previous, showPoweredByRazzl: checked } : previous
+                            )
                           }
                         />
                         <Text as="span" variant="bodyMd">
                           Show &quot;Powered by Razzl&quot;
                         </Text>
                       </InlineStack>
-                    </BlockStack>
-
-                    <div className="shopify-cta-settings-preview-column">
-                      <BlockStack gap="200">
-                        <Text as="span" variant="bodySm" tone="subdued">
-                          Storefront appearance
-                        </Text>
-                        <div className="shopify-cta-preview-panel">
-                          <ShopifyCtaStorefrontPreview
-                            label={config.ctaLabelDefault}
-                            styleMode={config.ctaStyleMode}
-                          />
-                        </div>
+                      <div className="shopify-cta-preview-panel shopify-cta-preview-panel--compact">
+                        <ShopifyCtaStorefrontPreview
+                          label={config.ctaLabelDefault}
+                          styleMode={config.ctaStyleMode}
+                        />
                         {config.showPoweredByRazzl ? (
                           <Text as="p" variant="bodySm" tone="subdued">
                             Powered by <strong>Razzl</strong>
                           </Text>
                         ) : null}
-                      </BlockStack>
-                    </div>
+                      </div>
+                    </BlockStack>
+
+                    <Box padding="400" background="bg-surface-secondary" borderRadius="300">
+                      {themeInstructions ? (
+                        <BlockStack gap="300">
+                          <BlockStack gap="100">
+                            <Text as="h3" variant="headingSm">
+                              {themeInstructions.title}
+                            </Text>
+                            <Text as="p" variant="bodySm" tone="subdued">
+                              Add the app block once in your product template. Per-product mapping
+                              and CTA status remain in the products table.
+                            </Text>
+                          </BlockStack>
+                          <ol className="shopify-theme-instructions-list">
+                            {themeInstructions.steps.map((step) => (
+                              <li key={step}>{step}</li>
+                            ))}
+                          </ol>
+                          {themeInstructions.deepLinkUrl ? (
+                            <div className="shopify-theme-editor-link">
+                              <Button
+                                url={themeInstructions.deepLinkUrl}
+                                external
+                                icon={ExternalIcon}
+                              >
+                                Open theme editor
+                              </Button>
+                            </div>
+                          ) : null}
+                        </BlockStack>
+                      ) : (
+                        <Text as="p" tone="subdued">
+                          Theme editor instructions are unavailable for this store.
+                        </Text>
+                      )}
+                    </Box>
                   </InlineGrid>
                 </div>
 
@@ -252,30 +298,6 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                 </div>
               </BlockStack>
             </form>
-          ) : null}
-
-          {themeInstructions ? (
-            <Box padding="400" background="bg-surface-secondary" borderRadius="200">
-              <BlockStack gap="200">
-                <Text as="h3" variant="headingSm">
-                  {themeInstructions.title}
-                </Text>
-                <BlockStack gap="100">
-                  {themeInstructions.steps.map((step) => (
-                    <Text as="p" key={step} variant="bodyMd">
-                      • {step}
-                    </Text>
-                  ))}
-                </BlockStack>
-                {themeInstructions.deepLinkUrl ? (
-                  <div className="shopify-theme-editor-link">
-                    <Button variant="plain" url={themeInstructions.deepLinkUrl} external icon={ExternalIcon}>
-                      Open theme editor
-                    </Button>
-                  </div>
-                ) : null}
-              </BlockStack>
-            </Box>
           ) : null}
         </BlockStack>
       </Box>

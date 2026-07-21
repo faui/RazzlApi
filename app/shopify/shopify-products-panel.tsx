@@ -2,6 +2,7 @@
 
 import {
   ActionList,
+  Badge,
   Banner,
   BlockStack,
   Box,
@@ -29,6 +30,7 @@ import {
   type ProductWorkflowStatus
 } from "@/app/shopify/product-status-select";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
+import { loadProductsAfterSync } from "@/app/shopify/shopify-sync-retry";
 
 type SyncStatusResponse = {
   ok: boolean;
@@ -65,6 +67,7 @@ type ProductsResponse = {
   ok: boolean;
   items?: ProductRow[];
   studioProducts?: StudioProduct[];
+  studioDashboardUrl?: string;
   studioCreateCopilotUrl?: string;
   error?: string;
 };
@@ -79,8 +82,10 @@ type Props = {
   shop: string;
   apiPublicOrigin: string;
   tenantLinked: boolean;
+  refreshVersion?: number;
   onProductStatsChange?: (stats: ProductStats) => void;
   onCreateCopilotUrl?: (url: string | null) => void;
+  onStudioDashboardUrlChange?: (url: string | null) => void;
 };
 
 type SortColumn = "title" | "copilot" | "status";
@@ -129,12 +134,41 @@ function workflowStatusSortKey(product: ProductRow): string {
   return "2_cta_on";
 }
 
+function mappingProgressStorageKey(shop: string): string {
+  return `razzl:shopify:mapping-progress:${shop}`;
+}
+
+function persistMappingProgress(shop: string, values: Set<string>) {
+  try {
+    window.localStorage.setItem(mappingProgressStorageKey(shop), JSON.stringify([...values]));
+  } catch {
+    // localStorage can be unavailable in privacy-restricted embedded contexts.
+  }
+}
+
+function readMappingProgress(shop: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const stored = window.localStorage.getItem(mappingProgressStorageKey(shop));
+    const parsed = stored ? (JSON.parse(stored) as unknown) : [];
+    return new Set(
+      Array.isArray(parsed)
+        ? parsed.filter((value): value is string => typeof value === "string")
+        : []
+    );
+  } catch {
+    return new Set();
+  }
+}
+
 export function ShopifyProductsPanel({
   shop,
   apiPublicOrigin,
   tenantLinked,
+  refreshVersion = 0,
   onProductStatsChange,
-  onCreateCopilotUrl
+  onCreateCopilotUrl,
+  onStudioDashboardUrlChange
 }: Props) {
   const showToast = useCommerceToast();
   const [syncStatus, setSyncStatus] = useState<SyncStatusResponse | null>(null);
@@ -157,6 +191,41 @@ export function ShopifyProductsPanel({
   const [copilotSearch, setCopilotSearch] = useState("");
   const [selectedCopilotPk, setSelectedCopilotPk] = useState("");
   const [statusInlineErrors, setStatusInlineErrors] = useState<Record<string, string>>({});
+  const [mappingInProgress, setMappingInProgress] = useState<Set<string>>(() =>
+    readMappingProgress(shop)
+  );
+
+  const setMappingProgress = useCallback(
+    (externalProductId: string, inProgress: boolean) => {
+      setMappingInProgress((current) => {
+        const next = new Set(current);
+        if (inProgress) {
+          next.add(externalProductId);
+        } else {
+          next.delete(externalProductId);
+        }
+        persistMappingProgress(shop, next);
+        return next;
+      });
+    },
+    [shop]
+  );
+
+  const clearCompletedMappingProgress = useCallback(
+    (items: ProductRow[]) => {
+      const completedIds = new Set(
+        items.filter((item) => Boolean(item.productPk)).map((item) => item.externalProductId)
+      );
+      if (completedIds.size === 0) return;
+      setMappingInProgress((current) => {
+        const next = new Set([...current].filter((id) => !completedIds.has(id)));
+        if (next.size === current.size) return current;
+        persistMappingProgress(shop, next);
+        return next;
+      });
+    },
+    [shop]
+  );
 
   const updateStats = useCallback(
     (items: ProductRow[], count: number) => {
@@ -190,7 +259,9 @@ export function ShopifyProductsPanel({
         if (productsData.ok) {
           const items = productsData.items ?? [];
           setProducts(items);
+          clearCompletedMappingProgress(items);
           setStudioProducts(productsData.studioProducts ?? []);
+          onStudioDashboardUrlChange?.(productsData.studioDashboardUrl ?? null);
           const createUrl = productsData.studioCreateCopilotUrl ?? null;
           setStudioCreateCopilotUrl(createUrl);
           onCreateCopilotUrl?.(createUrl);
@@ -207,7 +278,15 @@ export function ShopifyProductsPanel({
       setLoading(false);
       setReloadingProducts(false);
     }
-  }, [apiPublicOrigin, onCreateCopilotUrl, shop, tenantLinked, updateStats]);
+  }, [
+    apiPublicOrigin,
+    clearCompletedMappingProgress,
+    onCreateCopilotUrl,
+    onStudioDashboardUrlChange,
+    shop,
+    tenantLinked,
+    updateStats
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -222,7 +301,7 @@ export function ShopifyProductsPanel({
     return () => {
       cancelled = true;
     };
-  }, [loadData]);
+  }, [loadData, refreshVersion]);
 
   const filteredStudioProducts = useMemo(() => {
     const normalized = copilotSearch.trim().toLowerCase();
@@ -317,6 +396,7 @@ export function ShopifyProductsPanel({
 
   async function handleSync() {
     setSyncing(true);
+    setReloadingProducts(true);
     setErrorBanner(null);
     try {
       const response = await fetch(`${apiPublicOrigin}/api/commerce/sync?shop=${encodeURIComponent(shop)}`, {
@@ -330,21 +410,50 @@ export function ShopifyProductsPanel({
       if (!response.ok || !data.ok) {
         const message =
           data.code === "BILLING_REQUIRED"
-            ? "Approve a Shopify plan in the Billing section before syncing products."
+            ? "Complete the subscription step above before syncing products."
             : data.code === "TOKEN_REAUTH_REQUIRED"
               ? "Reconnect your Shopify store, then try sync again."
               : (data.error ?? "Sync failed");
         setErrorBanner(message);
         showToast(message, { isError: true });
       } else {
-        showToast(`Sync complete — ${data.stats?.productsSeen ?? 0} products processed`);
-        await loadData({ refreshing: true });
+        const productsSeen = data.stats?.productsSeen ?? 0;
+        const productsData = await loadProductsAfterSync(async () => {
+          const productsResponse = await fetch(
+            `${apiPublicOrigin}/api/commerce/products?shop=${encodeURIComponent(shop)}`
+          );
+          const result = (await productsResponse.json()) as ProductsResponse;
+          return productsResponse.ok ? result : { ...result, ok: false };
+        }, productsSeen);
+
+        if (!productsData.ok) {
+          throw new Error(productsData.error ?? "Unable to reload products after sync");
+        }
+
+        const items = productsData.items ?? [];
+        if (productsSeen > 0 && items.length === 0) {
+          throw new Error(
+            "Sync finished, but the product list is still updating. Wait a moment and try again."
+          );
+        }
+
+        setProducts(items);
+        clearCompletedMappingProgress(items);
+        setStudioProducts(productsData.studioProducts ?? []);
+        onStudioDashboardUrlChange?.(productsData.studioDashboardUrl ?? null);
+        const createUrl = productsData.studioCreateCopilotUrl ?? null;
+        setStudioCreateCopilotUrl(createUrl);
+        onCreateCopilotUrl?.(createUrl);
+        updateStats(items, Math.max(productsSeen, items.length));
+        showToast(`Sync complete — ${productsSeen} products processed`);
       }
-    } catch {
-      setErrorBanner("Sync failed");
-      showToast("Sync failed", { isError: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Sync failed";
+      setErrorBanner(message);
+      showToast(message, { isError: true });
     } finally {
       setSyncing(false);
+      setReloadingProducts(false);
     }
   }
 
@@ -370,6 +479,7 @@ export function ShopifyProductsPanel({
       return false;
     }
     setMappingModal(null);
+    setMappingProgress(externalProductId, false);
     setSelectedCopilotPk("");
     setCopilotSearch("");
     clearStatusInlineError(externalProductId);
@@ -479,6 +589,7 @@ export function ShopifyProductsPanel({
     const workflowStatus = getProductWorkflowStatus(product);
     const isPopoverOpen = activePopover === product.externalProductId;
     const isMapped = Boolean(product.productPk);
+    const isMappingInProgress = mappingInProgress.has(product.externalProductId) && !isMapped;
 
     const actions: Array<{
       content: string;
@@ -508,7 +619,7 @@ export function ShopifyProductsPanel({
       },
       {
         content: "Refresh status",
-        disabled: !isMapped,
+        disabled: !isMapped && !isMappingInProgress,
         onAction: () => {
           setActivePopover(null);
           void handleRefreshSnapshots(product.externalProductId);
@@ -535,6 +646,8 @@ export function ShopifyProductsPanel({
             <Text as="span" variant="bodyMd">
               {product.mappedModelName}
             </Text>
+          ) : isMappingInProgress ? (
+            <Badge tone="info">Mapping in progress…</Badge>
           ) : (
             <Text as="span" tone="subdued" variant="bodySm">
               —
@@ -790,20 +903,30 @@ export function ShopifyProductsPanel({
             ) : studioCreateCopilotUrl && mappingModal ? (
               <BlockStack gap="200">
                 <Text as="p" tone="subdued">
-                  Create a new copilot in Razzl Studio from a PDF, then return here to map it to this
-                  product.
+                  Create a new copilot in Razzl Studio from a PDF. Studio will map it back to this
+                  product automatically.
                 </Text>
                 <Button
-                  url={rowCreateCopilotUrl(studioCreateCopilotUrl, {
-                    externalProductId: mappingModal.id,
-                    title: mappingModal.title,
-                    imageUrl: mappingModal.imageUrl
-                  })}
-                  external
                   variant="primary"
+                  onClick={() => {
+                    const externalProductId = mappingModal.id;
+                    const url = rowCreateCopilotUrl(studioCreateCopilotUrl, {
+                      externalProductId,
+                      title: mappingModal.title,
+                      imageUrl: mappingModal.imageUrl
+                    });
+                    setMappingProgress(externalProductId, true);
+                    setMappingModal(null);
+                    setMapMode("existing");
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
                 >
                   Create copilot from PDF in Studio
                 </Button>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  The row will show “Mapping in progress” until Refresh status sees the automatic
+                  Studio mapping.
+                </Text>
               </BlockStack>
             ) : (
               <Text as="p" tone="subdued">

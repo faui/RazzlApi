@@ -25,6 +25,7 @@ export function ShopifyEmbeddedHome({
 }: Props) {
   const showToast = useCommerceToast();
   const [createCopilotUrl, setCreateCopilotUrl] = useState<string | null>(null);
+  const [setupComplete, setSetupComplete] = useState(false);
   const [oauthStarting, setOauthStarting] = useState(false);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function ShopifyEmbeddedHome({
   }, [linkedSuccess, showToast]);
 
   const primaryAction =
-    createCopilotUrl && status?.tenantLinked
+    createCopilotUrl && status?.tenantLinked && setupComplete
       ? {
           content: "Add Copilot",
           url: createCopilotUrl,
@@ -44,7 +45,7 @@ export function ShopifyEmbeddedHome({
       : undefined;
 
   const pageSubtitle =
-    createCopilotUrl && status?.tenantLinked
+    createCopilotUrl && status?.tenantLinked && setupComplete
       ? "Add AI setup help to your product pages. Add Copilot opens Studio — create from PDF or template."
       : "Add AI setup help to your product pages.";
 
@@ -85,6 +86,7 @@ export function ShopifyEmbeddedHome({
                 tenantName={status.tenantName}
                 apiPublicOrigin={apiPublicOrigin}
                 onCreateCopilotUrl={setCreateCopilotUrl}
+                onSetupCompleteChange={setSetupComplete}
               />
             ) : null}
           </BlockStack>

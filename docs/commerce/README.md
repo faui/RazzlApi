@@ -28,6 +28,7 @@ This directory holds the **authoritative documentation** for the Commerce Integr
 | [TESTING.md](./TESTING.md) | Test strategy (Studio + RazzlApi) |
 | [OPEN-QUESTIONS.md](./OPEN-QUESTIONS.md) | Resolved decisions (2026-06-28) |
 | [SLICE-9B-UX-GAP-REVIEW.md](./SLICE-9B-UX-GAP-REVIEW.md) | Embedded admin UX gap review |
+| [SLICE-13-UX-REVISION.md](./SLICE-13-UX-REVISION.md) | **Slice 13** — setup wizard, sync/map/CTA fixes, Studio indicators |
 
 Studio-only references (not duplicated here):
 

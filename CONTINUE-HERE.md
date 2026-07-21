@@ -2,6 +2,8 @@
 
 ## Current status
 
+**Slice 13 planned** — Embedded admin setup wizard + sync/map/CTA UX fixes + Studio commerce indicators. Spec: [`docs/commerce/SLICE-13-UX-REVISION.md`](docs/commerce/SLICE-13-UX-REVISION.md).
+
 **Slice 12 started** — App Store readiness checklist + listing docs. **Shopify go-live token hardening** implemented (expiring tokens, row-lock refresh, session-token exchange, `tokenStatus` on connection API).
 
 ## Current branch
