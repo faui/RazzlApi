@@ -819,8 +819,8 @@ export function ShopifyProductsPanel({
               itemCount={filteredProducts.length}
               headings={[
                 { title: "Store product", id: "title" },
-                { title: "Setup copilot", id: "copilot" },
-                { title: "Product page", id: "status" },
+                { title: "Razzl Copilot", id: "copilot" },
+                { title: "Setup help visibility", id: "status" },
                 { title: "Actions" }
               ]}
               sortable={[true, true, true, false]}

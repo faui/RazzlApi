@@ -60,12 +60,26 @@ export function ShopifyConnectionCard({
     return (
       <Card>
         <BlockStack gap="400">
-          <Banner tone="warning" title="Store not connected">
-            Complete OAuth install to connect <strong>{shop}</strong>.
-          </Banner>
+          <InlineStack gap="300" blockAlign="start" wrap={false}>
+            <span className="shopify-connection-heading-icon" aria-hidden="true">
+              <StoreIcon />
+            </span>
+            <BlockStack gap="100">
+              <Text as="h2" variant="headingMd">
+                Connect Razzl to your store
+              </Text>
+              <Text as="p" tone="subdued">
+                Connect your store to sync products and add guided setup help to your product
+                pages.
+              </Text>
+              <Text as="p" variant="bodySm" tone="subdued">
+                {shop}
+              </Text>
+            </BlockStack>
+          </InlineStack>
           <InlineStack align="start">
             <Button variant="primary" loading={oauthStarting} onClick={() => onConnectStore?.()}>
-              Connect store
+              Connect Razzl
             </Button>
           </InlineStack>
         </BlockStack>
@@ -77,13 +91,16 @@ export function ShopifyConnectionCard({
     return (
       <Card>
         <BlockStack gap="400">
-          <Banner tone="critical" title="Store reconnection required">
-            Your Shopify authorization expired. Reconnect <strong>{shop}</strong> to continue syncing
-            products and billing.
+          <Banner tone="warning" title="Reconnect Razzl to your store">
+            Your connection needs a quick refresh before Razzl can sync products or update setup
+            help.
           </Banner>
+          <Text as="p" variant="bodySm" tone="subdued">
+            {shop}
+          </Text>
           <InlineStack align="start">
             <Button variant="primary" loading={oauthStarting} onClick={() => onConnectStore?.()}>
-              Reconnect store
+              Reconnect Razzl
             </Button>
           </InlineStack>
         </BlockStack>
