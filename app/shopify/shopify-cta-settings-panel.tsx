@@ -143,7 +143,9 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
       <Box padding="400" background="bg-surface-secondary">
         <BlockStack gap="100">
           <InlineStack gap="200" blockAlign="center" wrap={false}>
-            <Icon source={ChatIcon} tone="base" />
+            <span className="shopify-connection-heading-icon" aria-hidden="true">
+              <Icon source={ChatIcon} tone="base" />
+            </span>
             <Text as="h2" variant="headingMd">
               Setup help button
             </Text>
