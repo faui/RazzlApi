@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Icon,
-  InlineGrid,
   InlineStack,
   Select,
   SkeletonBodyText,
@@ -142,18 +141,18 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
   return (
     <Card padding="0">
       <Box padding="400" background="bg-surface-secondary">
-        <div className="shopify-cta-settings-header">
+        <BlockStack gap="100">
           <InlineStack gap="200" blockAlign="center" wrap={false}>
             <Icon source={ChatIcon} tone="base" />
             <Text as="h2" variant="headingMd">
               Setup help button
             </Text>
           </InlineStack>
-          <Text as="p" tone="subdued" alignment="end">
+          <Text as="p" tone="subdued">
             Choose how setup help looks across your product pages. Product-level visibility stays
             in the table above.
           </Text>
-        </div>
+        </BlockStack>
       </Box>
 
       <Box padding="400">
@@ -169,62 +168,69 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
           ) : config ? (
             <form onSubmit={(event) => void handleSave(event)}>
               <BlockStack gap="400">
-                <div className="shopify-cta-settings-columns">
-                  <InlineGrid columns={{ xs: 1, md: 2 }} gap="400">
-                    <BlockStack gap="400">
+                <Box padding="400" background="bg-surface-secondary" borderRadius="300">
+                  <BlockStack gap="400">
+                    <BlockStack gap="100">
                       <Text as="h3" variant="headingSm">
                         Button appearance
                       </Text>
-                      <div className="shopify-cta-settings-fields">
-                        <Select
-                          label="Button label"
-                          options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
-                          value={config.ctaLabelDefault}
-                          onChange={(value) =>
-                            setConfig((previous) =>
-                              previous ? { ...previous, ctaLabelDefault: value } : previous
-                            )
-                          }
-                        />
-                        <Select
-                          label="Open setup help in"
-                          options={[
-                            { label: "New tab ↗", value: "new_tab" },
-                            { label: "Same tab", value: "same_tab" }
-                          ]}
-                          value={config.ctaOpenMode}
-                          onChange={(value) =>
-                            setConfig((previous) =>
-                              previous
-                                ? {
-                                    ...previous,
-                                    ctaOpenMode: value as CtaConfig["ctaOpenMode"]
-                                  }
-                                : previous
-                            )
-                          }
-                        />
-                        <Select
-                          label="Button style"
-                          options={[
-                            { label: "Inherit theme", value: "inherit_theme" },
-                            { label: "Button", value: "button" },
-                            { label: "Link", value: "link" },
-                            { label: "Badge", value: "badge" }
-                          ]}
-                          value={config.ctaStyleMode}
-                          onChange={(value) =>
-                            setConfig((previous) =>
-                              previous
-                                ? {
-                                    ...previous,
-                                    ctaStyleMode: value as CtaConfig["ctaStyleMode"]
-                                  }
-                                : previous
-                            )
-                          }
-                        />
-                      </div>
+                      <Text as="p" variant="bodySm" tone="subdued">
+                        Choose a label and style that feel native to your storefront.
+                      </Text>
+                    </BlockStack>
+
+                    <div className="shopify-cta-settings-fields">
+                      <Select
+                        label="Button label"
+                        options={LABEL_OPTIONS.map((label) => ({ label, value: label }))}
+                        value={config.ctaLabelDefault}
+                        onChange={(value) =>
+                          setConfig((previous) =>
+                            previous ? { ...previous, ctaLabelDefault: value } : previous
+                          )
+                        }
+                      />
+                      <Select
+                        label="Open setup help in"
+                        options={[
+                          { label: "New tab ↗", value: "new_tab" },
+                          { label: "Same tab", value: "same_tab" }
+                        ]}
+                        value={config.ctaOpenMode}
+                        onChange={(value) =>
+                          setConfig((previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  ctaOpenMode: value as CtaConfig["ctaOpenMode"]
+                                }
+                              : previous
+                          )
+                        }
+                      />
+                      <Select
+                        label="Button style"
+                        options={[
+                          { label: "Inherit theme", value: "inherit_theme" },
+                          { label: "Button", value: "button" },
+                          { label: "Link", value: "link" },
+                          { label: "Badge", value: "badge" }
+                        ]}
+                        value={config.ctaStyleMode}
+                        onChange={(value) =>
+                          setConfig((previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  ctaStyleMode: value as CtaConfig["ctaStyleMode"]
+                                }
+                              : previous
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="shopify-cta-appearance-preview-row">
                       <InlineStack gap="200" blockAlign="center">
                         <ShopifySwitch
                           checked={config.showPoweredByRazzl}
@@ -250,45 +256,43 @@ export function ShopifyCtaSettingsPanel({ shop, apiPublicOrigin, tenantLinked }:
                           </Text>
                         ) : null}
                       </div>
-                    </BlockStack>
+                    </div>
+                  </BlockStack>
+                </Box>
 
-                    <Box padding="400" background="bg-surface-secondary" borderRadius="300">
-                      {themeInstructions ? (
-                        <BlockStack gap="300">
-                          <BlockStack gap="100">
-                            <Text as="h3" variant="headingSm">
-                              {themeInstructions.title}
-                            </Text>
-                            <Text as="p" variant="bodySm" tone="subdued">
-                              Add the app block once to your product template. Then use the products
-                              table above to choose which products show setup help.
-                            </Text>
-                          </BlockStack>
-                          <ol className="shopify-theme-instructions-list">
-                            {themeInstructions.steps.map((step) => (
-                              <li key={step}>{step}</li>
-                            ))}
-                          </ol>
-                          {themeInstructions.deepLinkUrl ? (
-                            <div className="shopify-theme-editor-link">
-                              <Button
-                                url={themeInstructions.deepLinkUrl}
-                                external
-                                icon={ExternalIcon}
-                              >
-                                Open theme editor
-                              </Button>
-                            </div>
-                          ) : null}
+                <Box padding="400" background="bg-surface-secondary" borderRadius="300">
+                  {themeInstructions ? (
+                    <div className="shopify-theme-setup-panel">
+                      <BlockStack gap="300">
+                        <BlockStack gap="100">
+                          <Text as="h3" variant="headingSm">
+                            {themeInstructions.title}
+                          </Text>
+                          <Text as="p" variant="bodySm" tone="subdued">
+                            Add the app block once to your product template. Then use the products
+                            table above to choose which products show setup help.
+                          </Text>
                         </BlockStack>
-                      ) : (
-                        <Text as="p" tone="subdued">
-                          Theme editor instructions are unavailable for this store.
-                        </Text>
-                      )}
-                    </Box>
-                  </InlineGrid>
-                </div>
+                        <ol className="shopify-theme-instructions-list">
+                          {themeInstructions.steps.map((step) => (
+                            <li key={step}>{step}</li>
+                          ))}
+                        </ol>
+                      </BlockStack>
+                      {themeInstructions.deepLinkUrl ? (
+                        <BlockStack gap="300">
+                          <Button url={themeInstructions.deepLinkUrl} external icon={ExternalIcon}>
+                            Open theme editor
+                          </Button>
+                        </BlockStack>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <Text as="p" tone="subdued">
+                      Theme editor instructions are unavailable for this store.
+                    </Text>
+                  )}
+                </Box>
 
                 <div className="shopify-cta-settings-footer">
                   <InlineStack align="end">
