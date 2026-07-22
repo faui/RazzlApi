@@ -25,6 +25,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getProductWorkflowStatus,
+  productMatchesStatusFilter,
+  type ProductStatusFilter,
   ProductExperienceControl
 } from "@/app/shopify/product-status-select";
 import { useCommerceToast } from "@/app/shopify/shopify-polaris-provider";
@@ -179,7 +181,7 @@ export function ShopifyProductsPanel({
   const [refreshing, setRefreshing] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<ProductStatusFilter>("all");
   const [sortColumn, setSortColumn] = useState<SortColumn>("title");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [activePopover, setActivePopover] = useState<string | null>(null);
@@ -334,13 +336,7 @@ export function ShopifyProductsPanel({
       );
     }
 
-    if (statusFilter === "mapped") {
-      rows = rows.filter((product) => Boolean(product.productPk) && !product.storefrontCtaEnabled);
-    } else if (statusFilter === "unmapped") {
-      rows = rows.filter((product) => !product.productPk);
-    } else if (statusFilter === "cta_on") {
-      rows = rows.filter((product) => product.storefrontCtaEnabled);
-    }
+    rows = rows.filter((product) => productMatchesStatusFilter(product, statusFilter));
 
     rows.sort((a, b) => {
       let cmp = 0;
@@ -769,7 +765,7 @@ export function ShopifyProductsPanel({
                   { label: "Live on storefront", value: "cta_on" }
                 ]}
                 value={statusFilter}
-                onChange={setStatusFilter}
+                onChange={(value) => setStatusFilter(value as ProductStatusFilter)}
               />
             </InlineStack>
           </BlockStack>

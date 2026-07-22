@@ -3,6 +3,7 @@
 import { Badge, BlockStack, Button, InlineStack, Text } from "@shopify/polaris";
 
 export type ProductWorkflowStatus = "unmapped" | "mapped" | "cta_on";
+export type ProductStatusFilter = "all" | "unmapped" | "mapped" | "cta_on";
 
 export function getProductWorkflowStatus(product: {
   productPk: number | null;
@@ -15,6 +16,16 @@ export function getProductWorkflowStatus(product: {
     return "cta_on";
   }
   return "mapped";
+}
+
+export function productMatchesStatusFilter(
+  product: { productPk: number | null; storefrontCtaEnabled: boolean },
+  filter: ProductStatusFilter
+): boolean {
+  if (filter === "all") return true;
+  if (filter === "unmapped") return !product.productPk;
+  if (filter === "mapped") return Boolean(product.productPk);
+  return Boolean(product.productPk) && product.storefrontCtaEnabled;
 }
 
 type Props = {
